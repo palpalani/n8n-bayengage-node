@@ -1,0 +1,107 @@
+{
+  "name": "BayEngage Contact Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "list",
+        "limit": 100,
+        "page": 1
+      },
+      "id": "bayengage-list-contacts",
+      "name": "List BayEngage Contacts",
+      "type": "@bayengage/n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "create",
+        "email": "={{ $json.email }}",
+        "firstName": "={{ $json.first_name }}",
+        "lastName": "={{ $json.last_name }}",
+        "phone": "={{ $json.phone }}"
+      },
+      "id": "bayengage-create-contact",
+      "name": "Create Contact in CRM",
+      "type": "@bayengage/n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-valid-contacts",
+      "name": "Filter Valid Contacts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [340, 300]
+    }
+  ],
+  "connections": {
+    "bayengage-list-contacts": {
+      "main": [
+        [
+          {
+            "node": "filter-valid-contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-valid-contacts": {
+      "main": [
+        [
+          {
+            "node": "bayengage-create-contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
