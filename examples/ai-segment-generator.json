@@ -1,0 +1,444 @@
+{
+  "name": "AI Segment Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily AI Segment Analysis",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "list",
+        "limit": 1000
+      },
+      "id": "get-all-contacts",
+      "name": "Get All Contacts",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Prepare contact data for AI analysis\nconst contacts = items[0].json.data.contacts || [];\nconst currentDate = new Date();\nconst thirtyDaysAgo = new Date(currentDate.getTime() - (30 * 24 * 60 * 60 * 1000));\nconst ninetyDaysAgo = new Date(currentDate.getTime() - (90 * 24 * 60 * 60 * 1000));\n\n// Prepare contact data for AI analysis\nconst contactData = contacts.map(contact => {\n  const lastEngagement = contact.last_engagement_date ? new Date(contact.last_engagement_date) : null;\n  const signupDate = contact.created_at ? new Date(contact.created_at) : null;\n  const lastOrderDate = contact.last_order_date ? new Date(contact.last_order_date) : null;\n  \n  // Calculate engagement metrics\n  const daysSinceEngagement = lastEngagement ? Math.floor((currentDate - lastEngagement) / (1000 * 60 * 60 * 24)) : 999;\n  const daysSinceSignup = signupDate ? Math.floor((currentDate - signupDate) / (1000 * 60 * 60 * 24)) : 0;\n  const daysSinceLastOrder = lastOrderDate ? Math.floor((currentDate - lastOrderDate) / (1000 * 60 * 60 * 24)) : 999;\n  \n  // Calculate engagement score\n  let engagementScore = 100;\n  if (daysSinceEngagement > 90) engagementScore -= 50;\n  else if (daysSinceEngagement > 30) engagementScore -= 30;\n  else if (daysSinceEngagement > 7) engagementScore -= 10;\n  \n  const emailOpenRate = contact.email_open_rate || 0;\n  const emailClickRate = contact.email_click_rate || 0;\n  \n  if (emailOpenRate < 0.1) engagementScore -= 20;\n  else if (emailOpenRate < 0.2) engagementScore -= 10;\n  \n  if (emailClickRate < 0.02) engagementScore -= 15;\n  else if (emailClickRate < 0.05) engagementScore -= 8;\n  \n  return {\n    id: contact.id,\n    email: contact.email,\n    first_name: contact.first_name,\n    last_name: contact.last_name,\n    age: contact.age || null,\n    location: contact.location || null,\n    interests: contact.interests || [],\n    lifetime_value: contact.lifetime_value || 0,\n    order_count: contact.order_count || 0,\n    last_order_date: contact.last_order_date,\n    days_since_engagement: daysSinceEngagement,\n    days_since_signup: daysSinceSignup,\n    days_since_last_order: daysSinceLastOrder,\n    email_open_rate: emailOpenRate,\n    email_click_rate: emailClickRate,\n    engagement_score: Math.max(0, engagementScore),\n    signup_source: contact.signup_source || 'unknown',\n    customer_tier: contact.customer_tier || 'standard',\n    preferred_content_type: contact.preferred_content_type || 'email',\n    timezone: contact.timezone || 'UTC'\n  };\n});\n\n// Group contacts for analysis\nconst analysisData = {\n  total_contacts: contactData.length,\n  contacts: contactData,\n  analysis_date: currentDate.toISOString().split('T')[0],\n  time_ranges: {\n    thirty_days_ago: thirtyDaysAgo.toISOString().split('T')[0],\n    ninety_days_ago: ninetyDaysAgo.toISOString().split('T')[0]\n  }\n};\n\nreturn [{\n  json: analysisData\n}];"
+      },
+      "id": "prepare-contact-data",
+      "name": "Prepare Contact Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert data scientist and marketing analyst specializing in customer segmentation. Analyze the provided contact data and identify meaningful customer segments based on behavioral patterns, engagement levels, and demographic characteristics. Return your analysis as JSON with the following structure: { \"segments\": [ { \"name\": \"segment_name\", \"description\": \"segment_description\", \"criteria\": { \"field\": \"value\", \"operator\": \"comparison\" }, \"contacts\": [contact_ids], \"size\": number, \"characteristics\": [\"key traits\"] } ], \"insights\": [\"key insights about the data\"], \"recommendations\": [\"actionable recommendations\"] }"
+            },
+            {
+              "role": "user",
+              "content": "Analyze this contact data and create meaningful segments: {{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 2000
+        }
+      },
+      "id": "ai-segment-analysis",
+      "name": "AI Segment Analysis",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process AI analysis results and create segments\nconst contactData = items[0].json;\nconst aiResponse = items[1].json.choices[0].message.content;\n\nlet analysisResult;\ntry {\n  analysisResult = JSON.parse(aiResponse);\n} catch (error) {\n  // Fallback if AI response is not valid JSON\n  analysisResult = {\n    segments: [\n      {\n        name: \"High Value Customers\",\n        description: \"Customers with high lifetime value and engagement\",\n        criteria: { lifetime_value: { min: 1000 }, engagement_score: { min: 70 } },\n        contacts: [],\n        size: 0,\n        characteristics: [\"High spending\", \"Active engagement\", \"Loyal customers\"]\n      },\n      {\n        name: \"At Risk Customers\",\n        description: \"Customers showing signs of disengagement\",\n        criteria: { days_since_engagement: { min: 30 }, engagement_score: { max: 40 } },\n        contacts: [],\n        size: 0,\n        characteristics: [\"Low engagement\", \"Inactive recently\", \"Potential churn\"]\n      },\n      {\n        name: \"New Customers\",\n        description: \"Recently acquired customers\",\n        criteria: { days_since_signup: { max: 30 } },\n        contacts: [],\n        size: 0,\n        characteristics: [\"Recent signups\", \"Onboarding phase\", \"High potential\"]\n      }\n    ],\n    insights: [\"Contact data analysis completed\"],\n    recommendations: [\"Review segments and implement targeted campaigns\"]\n  };\n}\n\n// Process each segment and identify matching contacts\nconst processedSegments = analysisResult.segments.map(segment => {\n  const matchingContacts = contactData.contacts.filter(contact => {\n    // Apply segment criteria (simplified matching)\n    if (segment.criteria.lifetime_value?.min && contact.lifetime_value < segment.criteria.lifetime_value.min) return false;\n    if (segment.criteria.lifetime_value?.max && contact.lifetime_value > segment.criteria.lifetime_value.max) return false;\n    if (segment.criteria.engagement_score?.min && contact.engagement_score < segment.criteria.engagement_score.min) return false;\n    if (segment.criteria.engagement_score?.max && contact.engagement_score > segment.criteria.engagement_score.max) return false;\n    if (segment.criteria.days_since_engagement?.min && contact.days_since_engagement < segment.criteria.days_since_engagement.min) return false;\n    if (segment.criteria.days_since_engagement?.max && contact.days_since_engagement > segment.criteria.days_since_engagement.max) return false;\n    if (segment.criteria.days_since_signup?.min && contact.days_since_signup < segment.criteria.days_since_signup.min) return false;\n    if (segment.criteria.days_since_signup?.max && contact.days_since_signup > segment.criteria.days_since_signup.max) return false;\n    return true;\n  });\n  \n  return {\n    name: segment.name,\n    description: segment.description,\n    criteria: segment.criteria,\n    contacts: matchingContacts.map(c => c.id),\n    size: matchingContacts.length,\n    characteristics: segment.characteristics,\n    avg_lifetime_value: matchingContacts.length > 0 ? \n      (matchingContacts.reduce((sum, c) => sum + c.lifetime_value, 0) / matchingContacts.length).toFixed(2) : 0,\n    avg_engagement_score: matchingContacts.length > 0 ? \n      (matchingContacts.reduce((sum, c) => sum + c.engagement_score, 0) / matchingContacts.length).toFixed(2) : 0\n  };\n});\n\nreturn [{\n  json: {\n    analysis_date: contactData.analysis_date,\n    total_contacts: contactData.total_contacts,\n    segments: processedSegments,\n    insights: analysisResult.insights || [],\n    recommendations: analysisResult.recommendations || [],\n    generated_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-ai-segments",
+      "name": "Process AI Segments",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Create BayEngage lists for each segment\nconst data = items[0].json;\nconst segments = data.segments;\n\n// Create list creation tasks for each segment\nconst listCreationTasks = segments.map(segment => ({\n  segment_name: segment.name,\n  segment_description: segment.description,\n  contact_count: segment.size,\n  contact_ids: segment.contacts,\n  avg_lifetime_value: segment.avg_lifetime_value,\n  avg_engagement_score: segment.avg_engagement_score,\n  characteristics: segment.characteristics\n}));\n\nreturn listCreationTasks.map(task => ({ json: task }));"
+      },
+      "id": "create-list-tasks",
+      "name": "Create List Tasks",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "create",
+        "listName": "AI Segment - {{ $json.segment_name }}"
+      },
+      "id": "create-ai-segment-list",
+      "name": "Create AI Segment List",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Add contacts to the newly created list\nconst listData = items[0].json;\nconst segmentData = items[1].json;\n\n// Add each contact to the list\nconst addContactTasks = segmentData.contact_ids.map(contactId => ({\n  list_id: listData.id,\n  contact_id: contactId,\n  segment_name: segmentData.segment_name,\n  segment_description: segmentData.segment_description\n}));\n\nreturn addContactTasks.map(task => ({ json: task }));"
+      },
+      "id": "prepare-add-contacts",
+      "name": "Prepare Add Contacts",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "addContact",
+        "listId": "={{ $json.list_id }}",
+        "email": "={{ $json.contact_id }}"
+      },
+      "id": "add-contact-to-list",
+      "name": "Add Contact to List",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2000, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Aggregate segment creation results\nconst segmentData = items[0].json;\nconst addResults = items[1].json;\n\n// Count successful additions\nconst successfulAdditions = addResults.filter(result => result.success !== false).length;\nconst totalContacts = segmentData.contact_ids.length;\n\nreturn [{\n  json: {\n    segment_name: segmentData.segment_name,\n    segment_description: segmentData.segment_description,\n    list_id: segmentData.list_id,\n    total_contacts: totalContacts,\n    successful_additions: successfulAdditions,\n    failed_additions: totalContacts - successfulAdditions,\n    success_rate: totalContacts > 0 ? ((successfulAdditions / totalContacts) * 100).toFixed(2) : 0,\n    avg_lifetime_value: segmentData.avg_lifetime_value,\n    avg_engagement_score: segmentData.avg_engagement_score,\n    characteristics: segmentData.characteristics\n  }\n}];"
+      },
+      "id": "aggregate-segment-results",
+      "name": "Aggregate Segment Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2220, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "AI Segment Generated: {{ $json.segment_name }}",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*🤖 AI Segment Generated*\n\n*Segment:* {{ $json.segment_name }}\n*Description:* {{ $json.segment_description }}\n*List ID:* {{ $json.list_id }}\n*Total Contacts:* {{ $json.total_contacts }}\n*Success Rate:* {{ $json.success_rate }}%\n\n*Characteristics:*\n{{ $json.characteristics.map(char => `• ${char}`).join('\\n') }}\n\n*Metrics:*\n• Avg Lifetime Value: ${{ $json.avg_lifetime_value }}\n• Avg Engagement Score: {{ $json.avg_engagement_score }}/100\n\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2440, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "AI Segments",
+        "columnToMatchOn": "List ID",
+        "valueToMatchOn": "={{ $json.list_id }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Segment Name",
+              "fieldValue": "={{ $json.segment_name }}"
+            },
+            {
+              "column": "Segment Description",
+              "fieldValue": "={{ $json.segment_description }}"
+            },
+            {
+              "column": "List ID",
+              "fieldValue": "={{ $json.list_id }}"
+            },
+            {
+              "column": "Total Contacts",
+              "fieldValue": "={{ $json.total_contacts }}"
+            },
+            {
+              "column": "Successful Additions",
+              "fieldValue": "={{ $json.successful_additions }}"
+            },
+            {
+              "column": "Failed Additions",
+              "fieldValue": "={{ $json.failed_additions }}"
+            },
+            {
+              "column": "Success Rate %",
+              "fieldValue": "={{ $json.success_rate }}"
+            },
+            {
+              "column": "Avg Lifetime Value",
+              "fieldValue": "={{ $json.avg_lifetime_value }}"
+            },
+            {
+              "column": "Avg Engagement Score",
+              "fieldValue": "={{ $json.avg_engagement_score }}"
+            },
+            {
+              "column": "Characteristics",
+              "fieldValue": "={{ $json.characteristics.join('; ') }}"
+            },
+            {
+              "column": "Generated At",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-ai-segment",
+      "name": "Log AI Segment",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2660, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "track",
+        "eventName": "ai_segment_created",
+        "eventProperties": {
+          "properties": [
+            {
+              "name": "segment_name",
+              "value": "={{ $json.segment_name }}"
+            },
+            {
+              "name": "list_id",
+              "value": "={{ $json.list_id }}"
+            },
+            {
+              "name": "total_contacts",
+              "value": "={{ $json.total_contacts }}"
+            },
+            {
+              "name": "success_rate",
+              "value": "={{ $json.success_rate }}"
+            },
+            {
+              "name": "avg_lifetime_value",
+              "value": "={{ $json.avg_lifetime_value }}"
+            }
+          ]
+        }
+      },
+      "id": "track-segment-event",
+      "name": "Track Segment Event",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2880, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "get-all-contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-all-contacts": {
+      "main": [
+        [
+          {
+            "node": "prepare-contact-data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare-contact-data": {
+      "main": [
+        [
+          {
+            "node": "ai-segment-analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai-segment-analysis": {
+      "main": [
+        [
+          {
+            "node": "process-ai-segments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process-ai-segments": {
+      "main": [
+        [
+          {
+            "node": "create-list-tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-list-tasks": {
+      "main": [
+        [
+          {
+            "node": "create-ai-segment-list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-ai-segment-list": {
+      "main": [
+        [
+          {
+            "node": "prepare-add-contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare-add-contacts": {
+      "main": [
+        [
+          {
+            "node": "add-contact-to-list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "add-contact-to-list": {
+      "main": [
+        [
+          {
+            "node": "aggregate-segment-results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "aggregate-segment-results": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slack-notification": {
+      "main": [
+        [
+          {
+            "node": "log-ai-segment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log-ai-segment": {
+      "main": [
+        [
+          {
+            "node": "track-segment-event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["ai", "segmentation", "machine-learning", "automation"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

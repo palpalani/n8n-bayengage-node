@@ -1,0 +1,444 @@
+{
+  "name": "Onboarding Drip Campaign",
+  "nodes": [
+    {
+      "parameters": {
+        "eventType": "contact.created",
+        "verifySignature": false
+      },
+      "id": "bayengage-trigger",
+      "name": "New Contact Trigger",
+      "type": "n8n-nodes-bayengage.bayEngageTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "onboarding-drip-trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.data.user_type }}",
+              "rightValue": "new_user",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-new-users",
+      "name": "Filter New Users",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "days"
+      },
+      "id": "wait-day-1",
+      "name": "Wait 1 Day",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Onboarding - Day 1 - Welcome",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Welcome to Our Platform!</title>\n</head>\n<body>\n    <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n        <h1 style=\"color: #007bff;\">Welcome to Our Platform, {{ $json.data.first_name }}! 🎉</h1>\n        <p>We're thrilled to have you on board! You've just taken the first step towards transforming your workflow.</p>\n        \n        <div style=\"background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px;\">\n            <h2>What's Next?</h2>\n            <p>Over the next few days, we'll guide you through everything you need to know to get the most out of our platform.</p>\n        </div>\n        \n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"https://example.com/getting-started\" style=\"background-color: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;\">Get Started</a>\n        </div>\n        \n        <p>Questions? Just reply to this email - we're here to help!</p>\n        <p>Best regards,<br>The Onboarding Team</p>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-day1-template",
+      "name": "Create Day 1 Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Onboarding Day 1 - {{ $json.data.first_name }}",
+        "campaignSubject": "Welcome {{ $json.data.first_name }}! Let's get you started 🚀",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "onboarding-drip-list"
+      },
+      "id": "create-day1-campaign",
+      "name": "Create Day 1 Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-day1-campaign",
+      "name": "Send Day 1 Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "days"
+      },
+      "id": "wait-day-4",
+      "name": "Wait 3 More Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Onboarding - Day 4 - Features",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Discover Key Features</title>\n</head>\n<body>\n    <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n        <h1 style=\"color: #28a745;\">Ready to explore, {{ $json.data.first_name }}? 🔍</h1>\n        <p>Now that you're settled in, let's dive into the key features that will supercharge your productivity!</p>\n        \n        <div style=\"margin: 30px 0;\">\n            <h3>🎯 Key Features to Explore:</h3>\n            <ul style=\"line-height: 1.8;\">\n                <li><strong>Automation Builder:</strong> Create powerful workflows without coding</li>\n                <li><strong>Integration Hub:</strong> Connect with 200+ popular apps</li>\n                <li><strong>Analytics Dashboard:</strong> Track performance and optimize results</li>\n                <li><strong>Team Collaboration:</strong> Work together seamlessly</li>\n            </ul>\n        </div>\n        \n        <div style=\"background-color: #e3f2fd; padding: 20px; margin: 20px 0; border-radius: 8px;\">\n            <h3>💡 Pro Tip</h3>\n            <p>Start with our pre-built templates to get up and running quickly!</p>\n        </div>\n        \n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"https://example.com/features\" style=\"background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;\">Explore Features</a>\n        </div>\n        \n        <p>Need help? Our support team is just a click away!</p>\n        <p>Best regards,<br>The Product Team</p>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-day4-template",
+      "name": "Create Day 4 Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1780, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Onboarding Day 4 - {{ $json.data.first_name }}",
+        "campaignSubject": "Discover these powerful features, {{ $json.data.first_name }}! ⚡",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "onboarding-drip-list"
+      },
+      "id": "create-day4-campaign",
+      "name": "Create Day 4 Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2000, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-day4-campaign",
+      "name": "Send Day 4 Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2220, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 4,
+        "unit": "days"
+      },
+      "id": "wait-day-8",
+      "name": "Wait 4 More Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [2440, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Onboarding - Day 8 - Success Tips",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Success Tips & Best Practices</title>\n</head>\n<body>\n    <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n        <h1 style=\"color: #6f42c1;\">You're doing great, {{ $json.data.first_name }}! 🌟</h1>\n        <p>You've been with us for a week now. Here are some proven tips to maximize your success:</p>\n        \n        <div style=\"margin: 30px 0;\">\n            <h3>🚀 Success Tips:</h3>\n            <div style=\"margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #007bff;\">\n                <h4>1. Start Small</h4>\n                <p>Begin with simple automations and gradually build complexity.</p>\n            </div>\n            <div style=\"margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #28a745;\">\n                <h4>2. Use Templates</h4>\n                <p>Leverage our pre-built templates to save time and learn best practices.</p>\n            </div>\n            <div style=\"margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #ffc107;\">\n                <h4>3. Monitor & Optimize</h4>\n                <p>Regularly check your analytics and optimize based on performance data.</p>\n            </div>\n        </div>\n        \n        <div style=\"background-color: #d4edda; padding: 20px; margin: 20px 0; border-radius: 8px; border: 1px solid #c3e6cb;\">\n            <h3>🎯 Ready for the Next Level?</h3>\n            <p>Join our community of power users and unlock advanced features!</p>\n        </div>\n        \n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"https://example.com/community\" style=\"background-color: #6f42c1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;\">Join Community</a>\n        </div>\n        \n        <p>Keep up the great work! We're here to support your success.</p>\n        <p>Best regards,<br>The Success Team</p>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-day8-template",
+      "name": "Create Day 8 Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2660, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Onboarding Day 8 - {{ $json.data.first_name }}",
+        "campaignSubject": "Success tips for {{ $json.data.first_name }} - You're doing great! 🎯",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "onboarding-drip-list"
+      },
+      "id": "create-day8-campaign",
+      "name": "Create Day 8 Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2880, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-day8-campaign",
+      "name": "Send Day 8 Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [3100, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#onboarding",
+        "text": "Onboarding Drip Campaign Sent: {{ $json.data.first_name }}",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*Onboarding Drip Campaign*\n\n*Contact:* {{ $json.data.first_name }} {{ $json.data.last_name }}\n*Email:* {{ $json.data.email }}\n*Campaign ID:* {{ $json.campaign_id }}\n*Step:* Day 8 - Success Tips\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [3320, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "bayengage-trigger": {
+      "main": [
+        [
+          {
+            "node": "filter-new-users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-new-users": {
+      "main": [
+        [
+          {
+            "node": "wait-day-1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait-day-1": {
+      "main": [
+        [
+          {
+            "node": "create-day1-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-day1-template": {
+      "main": [
+        [
+          {
+            "node": "create-day1-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-day1-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-day1-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-day1-campaign": {
+      "main": [
+        [
+          {
+            "node": "wait-day-4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait-day-4": {
+      "main": [
+        [
+          {
+            "node": "create-day4-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-day4-template": {
+      "main": [
+        [
+          {
+            "node": "create-day4-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-day4-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-day4-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-day4-campaign": {
+      "main": [
+        [
+          {
+            "node": "wait-day-8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait-day-8": {
+      "main": [
+        [
+          {
+            "node": "create-day8-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-day8-template": {
+      "main": [
+        [
+          {
+            "node": "create-day8-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-day8-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-day8-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-day8-campaign": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["onboarding", "drip", "lifecycle", "education"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

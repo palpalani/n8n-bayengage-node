@@ -1,0 +1,360 @@
+{
+  "name": "Order Confirmation Campaign",
+  "nodes": [
+    {
+      "parameters": {
+        "eventType": "order.created",
+        "verifySignature": false
+      },
+      "id": "bayengage-trigger",
+      "name": "Order Created Trigger",
+      "type": "n8n-nodes-bayengage.bayEngageTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "order-confirmation-trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.data.order_status }}",
+              "rightValue": "confirmed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-confirmed-orders",
+      "name": "Filter Confirmed Orders",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "get",
+        "email": "={{ $json.data.customer_email }}"
+      },
+      "id": "get-customer-contact",
+      "name": "Get Customer Contact",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate personalized order confirmation content\nconst orderData = items[0].json.data;\nconst contactData = items[1].json.data;\n\n// Calculate order totals\nconst subtotal = orderData.order_items.reduce((sum, item) => sum + (item.price * item.quantity), 0);\nconst tax = orderData.tax_amount || 0;\nconst shipping = orderData.shipping_amount || 0;\nconst total = subtotal + tax + shipping;\n\n// Format order items\nconst orderItemsHtml = orderData.order_items.map(item => `\n  <tr>\n    <td style=\"padding: 10px; border-bottom: 1px solid #ddd;\">\n      <strong>${item.name}</strong><br>\n      <small>SKU: ${item.sku || 'N/A'}</small>\n    </td>\n    <td style=\"padding: 10px; border-bottom: 1px solid #ddd; text-align: center;\">${item.quantity}</td>\n    <td style=\"padding: 10px; border-bottom: 1px solid #ddd; text-align: right;\">$${item.price.toFixed(2)}</td>\n    <td style=\"padding: 10px; border-bottom: 1px solid #ddd; text-align: right;\">$${(item.price * item.quantity).toFixed(2)}</td>\n  </tr>\n`).join('');\n\n// Generate tracking information\nconst trackingInfo = orderData.tracking_number ? \n  `<p><strong>Tracking Number:</strong> ${orderData.tracking_number}</p>\n   <p><strong>Carrier:</strong> ${orderData.carrier || 'Standard Shipping'}</p>\n   <p><strong>Estimated Delivery:</strong> ${orderData.estimated_delivery || '3-5 business days'}</p>` :\n  '<p>Your order will be processed and shipped within 1-2 business days. You\\'ll receive tracking information once it ships.</p>';\n\n// Generate cross-sell recommendations based on order items\nconst crossSellItems = [\n  { name: 'Premium Support Package', price: 29.99, description: 'Get priority support and advanced features' },\n  { name: 'Extended Warranty', price: 49.99, description: 'Protect your purchase with our extended warranty' },\n  { name: 'Accessory Bundle', price: 19.99, description: 'Complete your setup with our recommended accessories' }\n];\n\nconst crossSellHtml = crossSellItems.map(item => `\n  <div style=\"border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px;\">\n    <h4 style=\"margin: 0 0 5px 0;\">${item.name}</h4>\n    <p style=\"margin: 0 0 10px 0; color: #666;\">${item.description}</p>\n    <p style=\"margin: 0; font-weight: bold; color: #007bff;\">$${item.price.toFixed(2)}</p>\n  </div>\n`).join('');\n\nreturn [{\n  json: {\n    order_id: orderData.order_id,\n    customer_name: contactData.first_name + ' ' + contactData.last_name,\n    customer_email: orderData.customer_email,\n    order_date: new Date(orderData.created_at).toLocaleDateString(),\n    order_items: orderData.order_items,\n    order_items_html: orderItemsHtml,\n    subtotal: subtotal.toFixed(2),\n    tax: tax.toFixed(2),\n    shipping: shipping.toFixed(2),\n    total: total.toFixed(2),\n    tracking_info: trackingInfo,\n    cross_sell_items: crossSellHtml,\n    shipping_address: orderData.shipping_address,\n    billing_address: orderData.billing_address\n  }\n}];"
+      },
+      "id": "generate-order-content",
+      "name": "Generate Order Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Order Confirmation - {{ $json.order_id }}",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Order Confirmation - {{ $json.order_id }}</title>\n    <style>\n        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n        .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n        .header { background-color: #28a745; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }\n        .content { background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n        .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }\n        .order-table th { background-color: #f8f9fa; padding: 10px; text-align: left; border-bottom: 2px solid #ddd; }\n        .order-table td { padding: 10px; border-bottom: 1px solid #ddd; }\n        .total-row { font-weight: bold; background-color: #f8f9fa; }\n        .cta-button { display: inline-block; background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 10px 5px; }\n        .footer { text-align: center; margin-top: 30px; padding: 20px; color: #666; font-size: 14px; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>✅ Order Confirmed!</h1>\n            <p>Thank you for your purchase, {{ $json.customer_name }}!</p>\n        </div>\n        <div class=\"content\">\n            <h2>Order Details</h2>\n            <p><strong>Order Number:</strong> {{ $json.order_id }}</p>\n            <p><strong>Order Date:</strong> {{ $json.order_date }}</p>\n            \n            <h3>Order Items</h3>\n            <table class=\"order-table\">\n                <thead>\n                    <tr>\n                        <th>Item</th>\n                        <th>Qty</th>\n                        <th>Price</th>\n                        <th>Total</th>\n                    </tr>\n                </thead>\n                <tbody>\n                    {{ $json.order_items_html }}\n                </tbody>\n                <tfoot>\n                    <tr>\n                        <td colspan=\"3\" style=\"text-align: right;\"><strong>Subtotal:</strong></td>\n                        <td style=\"text-align: right;\">${{ $json.subtotal }}</td>\n                    </tr>\n                    <tr>\n                        <td colspan=\"3\" style=\"text-align: right;\"><strong>Tax:</strong></td>\n                        <td style=\"text-align: right;\">${{ $json.tax }}</td>\n                    </tr>\n                    <tr>\n                        <td colspan=\"3\" style=\"text-align: right;\"><strong>Shipping:</strong></td>\n                        <td style=\"text-align: right;\">${{ $json.shipping }}</td>\n                    </tr>\n                    <tr class=\"total-row\">\n                        <td colspan=\"3\" style=\"text-align: right;\"><strong>Total:</strong></td>\n                        <td style=\"text-align: right;\">${{ $json.total }}</td>\n                    </tr>\n                </tfoot>\n            </table>\n            \n            <h3>Shipping Information</h3>\n            <div style=\"background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;\">\n                <p><strong>Shipping Address:</strong></p>\n                <p>{{ $json.shipping_address.street }}<br>\n                {{ $json.shipping_address.city }}, {{ $json.shipping_address.state }} {{ $json.shipping_address.zip }}<br>\n                {{ $json.shipping_address.country }}</p>\n            </div>\n            \n            <h3>Tracking Information</h3>\n            <div style=\"background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 15px 0;\">\n                {{ $json.tracking_info }}\n            </div>\n            \n            <div style=\"text-align: center; margin: 30px 0;\">\n                <a href=\"https://example.com/orders/{{ $json.order_id }}\" class=\"cta-button\">Track Your Order</a>\n                <a href=\"https://example.com/account\" class=\"cta-button\">View Account</a>\n            </div>\n            \n            <h3>Recommended for You</h3>\n            <p>Complete your purchase with these recommended items:</p>\n            {{ $json.cross_sell_items }}\n            \n            <div style=\"text-align: center; margin: 20px 0;\">\n                <a href=\"https://example.com/shop\" class=\"cta-button\">Continue Shopping</a>\n            </div>\n        </div>\n        <div class=\"footer\">\n            <p>Questions about your order? Contact us at support@example.com or call 1-800-123-4567</p>\n            <p><a href=\"#\" style=\"color: #007bff;\">Unsubscribe</a> | <a href=\"#\" style=\"color: #007bff;\">Update Preferences</a></p>\n        </div>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-order-template",
+      "name": "Create Order Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Order Confirmation - {{ $json.order_id }} - {{ $json.customer_name }}",
+        "campaignSubject": "Order Confirmed! #{{ $json.order_id }} - Thank you {{ $json.customer_name }}! ✅",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "order-confirmation-list"
+      },
+      "id": "create-order-campaign",
+      "name": "Create Order Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-order-confirmation",
+      "name": "Send Order Confirmation",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#orders",
+        "text": "Order Confirmation Sent: #{{ $json.order_id }}",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*📧 Order Confirmation Sent*\n\n*Order ID:* {{ $json.order_id }}\n*Customer:* {{ $json.customer_name }}\n*Email:* {{ $json.customer_email }}\n*Total:* ${{ $json.total }}\n*Campaign ID:* {{ $json.campaign_id }}\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1780, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "Order Confirmations",
+        "columnToMatchOn": "Order ID",
+        "valueToMatchOn": "={{ $json.order_id }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Order ID",
+              "fieldValue": "={{ $json.order_id }}"
+            },
+            {
+              "column": "Customer Name",
+              "fieldValue": "={{ $json.customer_name }}"
+            },
+            {
+              "column": "Customer Email",
+              "fieldValue": "={{ $json.customer_email }}"
+            },
+            {
+              "column": "Order Total",
+              "fieldValue": "={{ $json.total }}"
+            },
+            {
+              "column": "Campaign ID",
+              "fieldValue": "={{ $json.campaign_id }}"
+            },
+            {
+              "column": "Sent Date",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-order-confirmation",
+      "name": "Log Order Confirmation",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2000, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "track",
+        "eventName": "order_confirmation_sent",
+        "eventProperties": {
+          "properties": [
+            {
+              "name": "order_id",
+              "value": "={{ $json.order_id }}"
+            },
+            {
+              "name": "customer_email",
+              "value": "={{ $json.customer_email }}"
+            },
+            {
+              "name": "order_total",
+              "value": "={{ $json.total }}"
+            },
+            {
+              "name": "campaign_id",
+              "value": "={{ $json.campaign_id }}"
+            }
+          ]
+        }
+      },
+      "id": "track-order-event",
+      "name": "Track Order Event",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2220, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "bayengage-trigger": {
+      "main": [
+        [
+          {
+            "node": "filter-confirmed-orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-confirmed-orders": {
+      "main": [
+        [
+          {
+            "node": "get-customer-contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-customer-contact": {
+      "main": [
+        [
+          {
+            "node": "generate-order-content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-order-content": {
+      "main": [
+        [
+          {
+            "node": "create-order-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-order-template": {
+      "main": [
+        [
+          {
+            "node": "create-order-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-order-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-order-confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-order-confirmation": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slack-notification": {
+      "main": [
+        [
+          {
+            "node": "log-order-confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log-order-confirmation": {
+      "main": [
+        [
+          {
+            "node": "track-order-event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["order", "confirmation", "transactional", "ecommerce"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

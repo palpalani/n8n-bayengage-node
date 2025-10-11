@@ -1,0 +1,447 @@
+{
+  "name": "Multi-Channel Sync (Email + SMS)",
+  "nodes": [
+    {
+      "parameters": {
+        "eventType": "contact.created",
+        "verifySignature": false
+      },
+      "id": "bayengage-trigger",
+      "name": "New Contact Trigger",
+      "type": "n8n-nodes-bayengage.bayEngageTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "multi-channel-trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.data.phone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-has-phone",
+      "name": "Filter Has Phone Number",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate multi-channel campaign content\nconst contactData = items[0].json.data;\nconst currentDate = new Date();\n\n// Generate personalized content for both channels\nconst emailContent = {\n  subject: `Welcome ${contactData.first_name}! Get 20% off your first order 🎉`,\n  html: `\n    <!DOCTYPE html>\n    <html>\n    <head>\n        <meta charset=\"utf-8\">\n        <title>Welcome to Our Community!</title>\n    </head>\n    <body>\n        <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n            <h1 style=\"color: #007bff;\">Welcome ${contactData.first_name}! 🎉</h1>\n            <p>Thanks for joining our community! We're excited to have you on board.</p>\n            \n            <div style=\"background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px;\">\n                <h2>🎁 Special Welcome Offer</h2>\n                <p>Get <strong>20% off</strong> your first order with code <strong>WELCOME20</strong></p>\n                <p><small>Valid for 7 days</small></p>\n            </div>\n            \n            <div style=\"text-align: center; margin: 30px 0;\">\n                <a href=\"https://example.com/shop?code=WELCOME20\" style=\"background-color: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;\">Shop Now</a>\n            </div>\n            \n            <p>Questions? Reply to this email or text us at (555) 123-4567</p>\n            <p>Best regards,<br>The Team</p>\n        </div>\n    </body>\n    </html>\n  `\n};\n\nconst smsContent = {\n  message: `Hi ${contactData.first_name}! Welcome to our community! Get 20% off your first order with code WELCOME20. Shop now: https://example.com/shop?code=WELCOME20`,\n  shortMessage: `Welcome ${contactData.first_name}! Get 20% off with code WELCOME20. Shop: https://example.com/shop`\n};\n\n// Generate campaign timing (staggered delivery)\nconst emailSendTime = new Date(currentDate.getTime() + (5 * 60 * 1000)); // 5 minutes from now\nconst smsSendTime = new Date(currentDate.getTime() + (10 * 60 * 1000)); // 10 minutes from now\n\nreturn [{\n  json: {\n    contact_id: contactData.id,\n    first_name: contactData.first_name,\n    last_name: contactData.last_name,\n    email: contactData.email,\n    phone: contactData.phone,\n    email_content: emailContent,\n    sms_content: smsContent,\n    email_send_time: emailSendTime.toISOString(),\n    sms_send_time: smsSendTime.toISOString(),\n    campaign_id: `multi-channel-${Date.now()}`,\n    created_at: currentDate.toISOString()\n  }\n}];"
+      },
+      "id": "generate-multi-channel-content",
+      "name": "Generate Multi-Channel Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Multi-Channel Welcome - {{ $json.first_name }}",
+        "templateContent": "={{ $json.email_content.html }}"
+      },
+      "id": "create-email-template",
+      "name": "Create Email Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [900, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Multi-Channel Welcome - {{ $json.first_name }} {{ $json.last_name }}",
+        "campaignSubject": "={{ $json.email_content.subject }}",
+        "campaignContent": "={{ $json.email_content.html }}",
+        "recipientList": "multi-channel-welcome-list"
+      },
+      "id": "create-email-campaign",
+      "name": "Create Email Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1120, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-email-campaign",
+      "name": "Send Email Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "minutes"
+      },
+      "id": "wait-5-minutes",
+      "name": "Wait 5 Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $credentials.twilio_account_sid }}/Messages.json",
+        "authentication": "basicAuth",
+        "requestMethod": "POST",
+        "sendBody": true,
+        "bodyContentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "From",
+              "value": "{{ $credentials.twilio_phone_number }}"
+            },
+            {
+              "name": "Body",
+              "value": "={{ $json.sms_content.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms-message",
+      "name": "Send SMS Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1780, 300],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "twilio-credentials",
+          "name": "Twilio Basic Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Aggregate multi-channel campaign results\nconst emailResult = items[0].json;\nconst smsResult = items[1].json;\n\n// Parse SMS response\nlet smsStatus = 'failed';\nlet smsMessageId = null;\nif (smsResult.sid) {\n  smsStatus = 'sent';\n  smsMessageId = smsResult.sid;\n}\n\n// Calculate delivery timing\nconst emailSentAt = new Date();\nconst smsSentAt = new Date();\nconst timeDifference = Math.abs(smsSentAt - emailSentAt) / 1000 / 60; // minutes\n\nreturn [{\n  json: {\n    campaign_id: emailResult.campaign_id,\n    contact_id: emailResult.contact_id,\n    first_name: emailResult.first_name,\n    last_name: emailResult.last_name,\n    email: emailResult.email,\n    phone: emailResult.phone,\n    email_campaign_id: emailResult.campaign_id,\n    email_status: 'sent',\n    sms_message_id: smsMessageId,\n    sms_status: smsStatus,\n    delivery_timing: {\n      email_sent_at: emailSentAt.toISOString(),\n      sms_sent_at: smsSentAt.toISOString(),\n      time_difference_minutes: timeDifference.toFixed(2)\n    },\n    multi_channel_success: smsStatus === 'sent',\n    created_at: emailResult.created_at\n  }\n}];"
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Multi-Channel Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "Multi-Channel Campaign Sent: {{ $json.first_name }} {{ $json.last_name }}",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*📱📧 Multi-Channel Campaign Sent*\n\n*Contact:* {{ $json.first_name }} {{ $json.last_name }}\n*Email:* {{ $json.email }}\n*Phone:* {{ $json.phone }}\n*Campaign ID:* {{ $json.campaign_id }}\n\n*Delivery Status:*\n• Email: {{ $json.email_status }}\n• SMS: {{ $json.sms_status }}\n• Multi-Channel Success: {{ $json.multi_channel_success ? 'Yes' : 'No' }}\n\n*Timing:*\n• Email Sent: {{ $json.delivery_timing.email_sent_at }}\n• SMS Sent: {{ $json.delivery_timing.sms_sent_at }}\n• Time Difference: {{ $json.delivery_timing.time_difference_minutes }} minutes\n\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2220, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "Multi-Channel Campaigns",
+        "columnToMatchOn": "Campaign ID",
+        "valueToMatchOn": "={{ $json.campaign_id }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Campaign ID",
+              "fieldValue": "={{ $json.campaign_id }}"
+            },
+            {
+              "column": "Contact Name",
+              "fieldValue": "={{ $json.first_name }} {{ $json.last_name }}"
+            },
+            {
+              "column": "Email",
+              "fieldValue": "={{ $json.email }}"
+            },
+            {
+              "column": "Phone",
+              "fieldValue": "={{ $json.phone }}"
+            },
+            {
+              "column": "Email Status",
+              "fieldValue": "={{ $json.email_status }}"
+            },
+            {
+              "column": "SMS Status",
+              "fieldValue": "={{ $json.sms_status }}"
+            },
+            {
+              "column": "SMS Message ID",
+              "fieldValue": "={{ $json.sms_message_id }}"
+            },
+            {
+              "column": "Multi-Channel Success",
+              "fieldValue": "={{ $json.multi_channel_success }}"
+            },
+            {
+              "column": "Time Difference (min)",
+              "fieldValue": "={{ $json.delivery_timing.time_difference_minutes }}"
+            },
+            {
+              "column": "Created At",
+              "fieldValue": "={{ $json.created_at }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-multi-channel-campaign",
+      "name": "Log Multi-Channel Campaign",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2440, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "track",
+        "eventName": "multi_channel_campaign_sent",
+        "eventProperties": {
+          "properties": [
+            {
+              "name": "campaign_id",
+              "value": "={{ $json.campaign_id }}"
+            },
+            {
+              "name": "contact_id",
+              "value": "={{ $json.contact_id }}"
+            },
+            {
+              "name": "email_status",
+              "value": "={{ $json.email_status }}"
+            },
+            {
+              "name": "sms_status",
+              "value": "={{ $json.sms_status }}"
+            },
+            {
+              "name": "multi_channel_success",
+              "value": "={{ $json.multi_channel_success }}"
+            }
+          ]
+        }
+      },
+      "id": "track-multi-channel-event",
+      "name": "Track Multi-Channel Event",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2660, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "bayengage-trigger": {
+      "main": [
+        [
+          {
+            "node": "filter-has-phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-has-phone": {
+      "main": [
+        [
+          {
+            "node": "generate-multi-channel-content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-multi-channel-content": {
+      "main": [
+        [
+          {
+            "node": "create-email-template",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "wait-5-minutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-email-template": {
+      "main": [
+        [
+          {
+            "node": "create-email-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-email-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-email-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-email-campaign": {
+      "main": [
+        [
+          {
+            "node": "aggregate-results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait-5-minutes": {
+      "main": [
+        [
+          {
+            "node": "send-sms-message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-sms-message": {
+      "main": [
+        [
+          {
+            "node": "aggregate-results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "aggregate-results": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slack-notification": {
+      "main": [
+        [
+          {
+            "node": "log-multi-channel-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log-multi-channel-campaign": {
+      "main": [
+        [
+          {
+            "node": "track-multi-channel-event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["multi-channel", "email", "sms", "sync"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

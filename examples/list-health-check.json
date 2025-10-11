@@ -1,0 +1,426 @@
+{
+  "name": "List Health Check Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Weekly List Health Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "list",
+        "limit": 1000
+      },
+      "id": "get-all-contacts",
+      "name": "Get All Contacts",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Analyze list health and identify issues\nconst contacts = items[0].json.data.contacts || [];\nconst currentDate = new Date();\nconst thirtyDaysAgo = new Date(currentDate.getTime() - (30 * 24 * 60 * 60 * 1000));\nconst ninetyDaysAgo = new Date(currentDate.getTime() - (90 * 24 * 60 * 60 * 1000));\nconst oneYearAgo = new Date(currentDate.getTime() - (365 * 24 * 60 * 60 * 1000));\n\n// Categorize contacts by health status\nconst healthCategories = {\n  healthy: [],\n  at_risk: [],\n  inactive: [],\n  bounced: [],\n  unsubscribed: [],\n  invalid: []\n};\n\ncontacts.forEach(contact => {\n  const lastEngagement = contact.last_engagement_date ? new Date(contact.last_engagement_date) : null;\n  const signupDate = contact.created_at ? new Date(contact.created_at) : null;\n  const emailOpenRate = contact.email_open_rate || 0;\n  const emailClickRate = contact.email_click_rate || 0;\n  const bounceCount = contact.bounce_count || 0;\n  const isUnsubscribed = contact.unsubscribed || false;\n  \n  // Check for invalid email\n  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n  const isValidEmail = emailRegex.test(contact.email);\n  \n  if (!isValidEmail) {\n    healthCategories.invalid.push(contact);\n  } else if (isUnsubscribed) {\n    healthCategories.unsubscribed.push(contact);\n  } else if (bounceCount >= 3) {\n    healthCategories.bounced.push(contact);\n  } else if (lastEngagement && lastEngagement < ninetyDaysAgo) {\n    healthCategories.inactive.push(contact);\n  } else if (lastEngagement && lastEngagement < thirtyDaysAgo) {\n    healthCategories.at_risk.push(contact);\n  } else {\n    healthCategories.healthy.push(contact);\n  }\n});\n\n// Calculate health metrics\nconst totalContacts = contacts.length;\nconst healthyCount = healthCategories.healthy.length;\nconst atRiskCount = healthCategories.at_risk.length;\nconst inactiveCount = healthCategories.inactive.length;\nconst bouncedCount = healthCategories.bounced.length;\nconst unsubscribedCount = healthCategories.unsubscribed.length;\nconst invalidCount = healthCategories.invalid.length;\n\n// Calculate health score (0-100)\nlet healthScore = 100;\nhealthScore -= (atRiskCount / totalContacts) * 20; // -20 points for at-risk\nhealthScore -= (inactiveCount / totalContacts) * 40; // -40 points for inactive\nhealthScore -= (bouncedCount / totalContacts) * 30; // -30 points for bounced\nhealthScore -= (invalidCount / totalContacts) * 50; // -50 points for invalid\nhealthScore = Math.max(0, Math.round(healthScore));\n\n// Determine overall health status\nlet overallHealth = 'excellent';\nif (healthScore < 30) overallHealth = 'poor';\nelse if (healthScore < 50) overallHealth = 'fair';\nelse if (healthScore < 70) overallHealth = 'good';\nelse if (healthScore < 90) overallHealth = 'very_good';\n\n// Generate recommendations\nconst recommendations = [];\nif (atRiskCount > 0) {\n  recommendations.push(`Send re-engagement campaigns to ${atRiskCount} at-risk contacts`);\n}\nif (inactiveCount > 0) {\n  recommendations.push(`Consider removing ${inactiveCount} inactive contacts (90+ days)`);\n}\nif (bouncedCount > 0) {\n  recommendations.push(`Clean up ${bouncedCount} contacts with high bounce rates`);\n}\nif (invalidCount > 0) {\n  recommendations.push(`Remove ${invalidCount} contacts with invalid email addresses`);\n}\nif (healthScore < 70) {\n  recommendations.push('Implement list hygiene practices and regular cleanup');\n}\nif (healthScore < 50) {\n  recommendations.push('Consider list rebuilding strategy and permission-based acquisition');\n}\n\n// Calculate engagement trends\nconst recentContacts = contacts.filter(contact => {\n  const signupDate = contact.created_at ? new Date(contact.created_at) : null;\n  return signupDate && signupDate > thirtyDaysAgo;\n});\n\nconst avgOpenRate = contacts.reduce((sum, contact) => sum + (contact.email_open_rate || 0), 0) / totalContacts;\nconst avgClickRate = contacts.reduce((sum, contact) => sum + (contact.email_click_rate || 0), 0) / totalContacts;\n\nreturn [{\n  json: {\n    analysis_date: currentDate.toISOString().split('T')[0],\n    total_contacts: totalContacts,\n    health_score: healthScore,\n    overall_health: overallHealth,\n    categories: {\n      healthy: healthyCount,\n      at_risk: atRiskCount,\n      inactive: inactiveCount,\n      bounced: bouncedCount,\n      unsubscribed: unsubscribedCount,\n      invalid: invalidCount\n    },\n    percentages: {\n      healthy: ((healthyCount / totalContacts) * 100).toFixed(2),\n      at_risk: ((atRiskCount / totalContacts) * 100).toFixed(2),\n      inactive: ((inactiveCount / totalContacts) * 100).toFixed(2),\n      bounced: ((bouncedCount / totalContacts) * 100).toFixed(2),\n      unsubscribed: ((unsubscribedCount / totalContacts) * 100).toFixed(2),\n      invalid: ((invalidCount / totalContacts) * 100).toFixed(2)\n    },\n    engagement_metrics: {\n      avg_open_rate: (avgOpenRate * 100).toFixed(2),\n      avg_click_rate: (avgClickRate * 100).toFixed(2),\n      recent_signups: recentContacts.length\n    },\n    recommendations: recommendations,\n    health_categories: healthCategories\n  }\n}];"
+      },
+      "id": "analyze-list-health",
+      "name": "Analyze List Health",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.health_score }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-needs-attention",
+      "name": "Filter Needs Attention",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate list health report and cleanup actions\nconst data = items[0].json;\nconst healthCategories = data.health_categories;\n\n// Generate HTML report\nconst htmlContent = `\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>List Health Report - ${data.analysis_date}</title>\n    <style>\n        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; }\n        .container { max-width: 800px; margin: 0 auto; }\n        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }\n        .content { background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n        .health-score { text-align: center; margin: 30px 0; }\n        .score-circle { width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(#4CAF50 0deg ${data.health_score * 3.6}deg, #e0e0e0 ${data.health_score * 3.6}deg 360deg); display: flex; align-items: center; justify-content: center; margin: 0 auto; position: relative; }\n        .score-text { background: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: #333; }\n        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }\n        .metric-card { background-color: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; }\n        .metric-value { font-size: 2em; font-weight: bold; margin: 10px 0; }\n        .metric-label { color: #666; font-size: 0.9em; }\n        .recommendations { background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0; }\n        .recommendations ul { margin: 0; padding-left: 20px; }\n        .recommendations li { margin: 10px 0; }\n        .status-excellent { color: #4CAF50; }\n        .status-good { color: #2196F3; }\n        .status-fair { color: #FF9800; }\n        .status-poor { color: #F44336; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>📊 List Health Report</h1>\n            <p>Analysis Date: ${data.analysis_date}</p>\n        </div>\n        <div class=\"content\">\n            <div class=\"health-score\">\n                <div class=\"score-circle\">\n                    <div class=\"score-text\">${data.health_score}</div>\n                </div>\n                <h2 class=\"status-${data.overall_health}\">Health Score: ${data.health_score}/100</h2>\n                <p>Overall Status: <strong>${data.overall_health.replace('_', ' ').toUpperCase()}</strong></p>\n            </div>\n            \n            <div class=\"metrics-grid\">\n                <div class=\"metric-card\">\n                    <div class=\"metric-value\" style=\"color: #4CAF50;\">${data.categories.healthy}</div>\n                    <div class=\"metric-label\">Healthy Contacts</div>\n                    <div class=\"metric-label\">${data.percentages.healthy}%</div>\n                </div>\n                <div class=\"metric-card\">\n                    <div class=\"metric-value\" style=\"color: #FF9800;\">${data.categories.at_risk}</div>\n                    <div class=\"metric-label\">At Risk</div>\n                    <div class=\"metric-label\">${data.percentages.at_risk}%</div>\n                </div>\n                <div class=\"metric-card\">\n                    <div class=\"metric-value\" style=\"color: #F44336;\">${data.categories.inactive}</div>\n                    <div class=\"metric-label\">Inactive</div>\n                    <div class=\"metric-label\">${data.percentages.inactive}%</div>\n                </div>\n                <div class=\"metric-card\">\n                    <div class=\"metric-value\" style=\"color: #9C27B0;\">${data.categories.bounced}</div>\n                    <div class=\"metric-label\">Bounced</div>\n                    <div class=\"metric-label\">${data.percentages.bounced}%</div>\n                </div>\n                <div class=\"metric-card\">\n                    <div class=\"metric-value\" style=\"color: #607D8B;\">${data.categories.unsubscribed}</div>\n                    <div class=\"metric-label\">Unsubscribed</div>\n                    <div class=\"metric-label\">${data.percentages.unsubscribed}%</div>\n                </div>\n                <div class=\"metric-card\">\n                    <div class=\"metric-value\" style=\"color: #795548;\">${data.categories.invalid}</div>\n                    <div class=\"metric-label\">Invalid</div>\n                    <div class=\"metric-label\">${data.percentages.invalid}%</div>\n                </div>\n            </div>\n            \n            <h3>📈 Engagement Metrics</h3>\n            <div class=\"metrics-grid\">\n                <div class=\"metric-card\">\n                    <div class=\"metric-value\">${data.engagement_metrics.avg_open_rate}%</div>\n                    <div class=\"metric-label\">Average Open Rate</div>\n                </div>\n                <div class=\"metric-card\">\n                    <div class=\"metric-value\">${data.engagement_metrics.avg_click_rate}%</div>\n                    <div class=\"metric-label\">Average Click Rate</div>\n                </div>\n                <div class=\"metric-card\">\n                    <div class=\"metric-value\">${data.engagement_metrics.recent_signups}</div>\n                    <div class=\"metric-label\">Recent Signups (30 days)</div>\n                </div>\n            </div>\n            \n            <div class=\"recommendations\">\n                <h3>💡 Recommendations</h3>\n                <ul>\n                    ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}\n                </ul>\n            </div>\n            \n            <div style=\"text-align: center; margin: 30px 0;\">\n                <a href=\"https://example.com/list-management\" style=\"background-color: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;\">Manage Lists</a>\n            </div>\n        </div>\n    </div>\n</body>\n</html>\n`;\n\nreturn [{\n  json: {\n    analysis_date: data.analysis_date,\n    health_score: data.health_score,\n    overall_health: data.overall_health,\n    total_contacts: data.total_contacts,\n    categories: data.categories,\n    percentages: data.percentages,\n    engagement_metrics: data.engagement_metrics,\n    recommendations: data.recommendations,\n    html_content: htmlContent,\n    needs_attention: data.health_score < 70\n  }\n}];"
+      },
+      "id": "generate-health-report",
+      "name": "Generate Health Report",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "List Health Report - {{ $json.analysis_date }}",
+        "templateContent": "={{ $json.html_content }}"
+      },
+      "id": "create-health-template",
+      "name": "Create Health Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "List Health Report - {{ $json.analysis_date }}",
+        "campaignSubject": "📊 List Health Report - {{ $json.analysis_date }} (Score: {{ $json.health_score }}/100)",
+        "campaignContent": "={{ $json.html_content }}",
+        "recipientList": "list-health-recipients"
+      },
+      "id": "create-health-campaign",
+      "name": "Create Health Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-health-report",
+      "name": "Send Health Report",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1780, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "List Health Check: Score {{ $json.health_score }}/100 - {{ $json.overall_health.toUpperCase() }}",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*📊 List Health Check Report*\n\n*Analysis Date:* {{ $json.analysis_date }}\n*Health Score:* {{ $json.health_score }}/100\n*Overall Status:* {{ $json.overall_health.toUpperCase() }}\n*Total Contacts:* {{ $json.total_contacts.toLocaleString() }}\n\n*Breakdown:*\n• Healthy: {{ $json.categories.healthy }} ({{ $json.percentages.healthy }}%)\n• At Risk: {{ $json.categories.at_risk }} ({{ $json.percentages.at_risk }}%)\n• Inactive: {{ $json.categories.inactive }} ({{ $json.percentages.inactive }}%)\n• Bounced: {{ $json.categories.bounced }} ({{ $json.percentages.bounced }}%)\n• Unsubscribed: {{ $json.categories.unsubscribed }} ({{ $json.percentages.unsubscribed }}%)\n• Invalid: {{ $json.categories.invalid }} ({{ $json.percentages.invalid }}%)\n\n*Engagement:*\n• Avg Open Rate: {{ $json.engagement_metrics.avg_open_rate }}%\n• Avg Click Rate: {{ $json.engagement_metrics.avg_click_rate }}%\n• Recent Signups: {{ $json.engagement_metrics.recent_signups }}\n\n*Needs Attention:* {{ $json.needs_attention ? 'Yes' : 'No' }}\n*Campaign ID:* {{ $json.campaign_id }}\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2000, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "List Health Reports",
+        "columnToMatchOn": "Analysis Date",
+        "valueToMatchOn": "={{ $json.analysis_date }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Analysis Date",
+              "fieldValue": "={{ $json.analysis_date }}"
+            },
+            {
+              "column": "Health Score",
+              "fieldValue": "={{ $json.health_score }}"
+            },
+            {
+              "column": "Overall Health",
+              "fieldValue": "={{ $json.overall_health }}"
+            },
+            {
+              "column": "Total Contacts",
+              "fieldValue": "={{ $json.total_contacts }}"
+            },
+            {
+              "column": "Healthy Count",
+              "fieldValue": "={{ $json.categories.healthy }}"
+            },
+            {
+              "column": "At Risk Count",
+              "fieldValue": "={{ $json.categories.at_risk }}"
+            },
+            {
+              "column": "Inactive Count",
+              "fieldValue": "={{ $json.categories.inactive }}"
+            },
+            {
+              "column": "Bounced Count",
+              "fieldValue": "={{ $json.categories.bounced }}"
+            },
+            {
+              "column": "Unsubscribed Count",
+              "fieldValue": "={{ $json.categories.unsubscribed }}"
+            },
+            {
+              "column": "Invalid Count",
+              "fieldValue": "={{ $json.categories.invalid }}"
+            },
+            {
+              "column": "Avg Open Rate %",
+              "fieldValue": "={{ $json.engagement_metrics.avg_open_rate }}"
+            },
+            {
+              "column": "Avg Click Rate %",
+              "fieldValue": "={{ $json.engagement_metrics.avg_click_rate }}"
+            },
+            {
+              "column": "Needs Attention",
+              "fieldValue": "={{ $json.needs_attention }}"
+            },
+            {
+              "column": "Campaign ID",
+              "fieldValue": "={{ $json.campaign_id }}"
+            },
+            {
+              "column": "Generated At",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-health-report",
+      "name": "Log Health Report",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2220, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "track",
+        "eventName": "list_health_check_completed",
+        "eventProperties": {
+          "properties": [
+            {
+              "name": "analysis_date",
+              "value": "={{ $json.analysis_date }}"
+            },
+            {
+              "name": "health_score",
+              "value": "={{ $json.health_score }}"
+            },
+            {
+              "name": "overall_health",
+              "value": "={{ $json.overall_health }}"
+            },
+            {
+              "name": "total_contacts",
+              "value": "={{ $json.total_contacts }}"
+            },
+            {
+              "name": "needs_attention",
+              "value": "={{ $json.needs_attention }}"
+            }
+          ]
+        }
+      },
+      "id": "track-health-event",
+      "name": "Track Health Event",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2440, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "get-all-contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-all-contacts": {
+      "main": [
+        [
+          {
+            "node": "analyze-list-health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "analyze-list-health": {
+      "main": [
+        [
+          {
+            "node": "filter-needs-attention",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-needs-attention": {
+      "main": [
+        [
+          {
+            "node": "generate-health-report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-health-report": {
+      "main": [
+        [
+          {
+            "node": "create-health-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-health-template": {
+      "main": [
+        [
+          {
+            "node": "create-health-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-health-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-health-report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-health-report": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slack-notification": {
+      "main": [
+        [
+          {
+            "node": "log-health-report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log-health-report": {
+      "main": [
+        [
+          {
+            "node": "track-health-event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["list-health", "cleanup", "analytics", "maintenance"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
