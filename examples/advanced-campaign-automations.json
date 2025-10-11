@@ -1,0 +1,243 @@
+{
+  "advanced_campaign_automations": [
+    {
+      "title": "Predictive Send-Time Optimization",
+      "description": "Use AI and machine learning to determine the optimal email send time for each contact based on their historical open/click patterns, timezone, and engagement behavior.",
+      "trigger": "Scheduled daily at 9 AM",
+      "node_sequence": "Schedule Trigger → BayEngage Get Reports → AI Analysis (OpenAI) → Timezone Detection → BayEngage Send Campaign (scheduled per contact)",
+      "endpoints": ["/reports", "/contacts", "/campaigns", "/events"],
+      "advanced_idea": "Extend with monthly AI model retraining using 90-day historical data and implement A/B testing for send time optimization",
+      "category": "Optimization & A/B Testing",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    },
+    {
+      "title": "Smart Re-send to Non-Openers",
+      "description": "Automatically re-send campaigns to contacts who didn't open the original email with optimized subject lines and send times to maximize engagement.",
+      "trigger": "BayEngage Campaign Report (24 hours after send)",
+      "node_sequence": "BayEngage Get Reports → Filter Non-Openers → AI Subject Line Generator → BayEngage Send Campaign → Performance Tracking",
+      "endpoints": ["/reports", "/contacts", "/campaigns", "/templates"],
+      "advanced_idea": "Implement machine learning to predict which subject line variations will work best for each contact segment",
+      "category": "Optimization & A/B Testing",
+      "difficulty": "Intermediate",
+      "ai_powered": true
+    },
+    {
+      "title": "Multi-Source Newsletter Aggregation",
+      "description": "Automatically aggregate content from multiple sources (RSS feeds, Notion databases, YouTube channels, Twitter) to create comprehensive weekly newsletters.",
+      "trigger": "Scheduled weekly on Mondays at 8 AM",
+      "node_sequence": "Schedule Trigger → RSS Reader → Notion API → YouTube API → Twitter API → AI Content Summarizer → BayEngage Create Campaign → Send",
+      "endpoints": ["/campaigns", "/templates", "/contacts"],
+      "advanced_idea": "Add AI-powered content curation to automatically select the most relevant content for each subscriber based on their interests",
+      "category": "Newsletter & Content",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    },
+    {
+      "title": "AI-Personalized Newsletter",
+      "description": "Generate personalized newsletter introductions and content recommendations for each subscriber based on their engagement history and preferences.",
+      "trigger": "Scheduled weekly on Fridays at 10 AM",
+      "node_sequence": "Schedule Trigger → BayEngage Get Contacts → AI Personalization Engine → Dynamic Content Generation → BayEngage Send Campaign",
+      "endpoints": ["/contacts", "/campaigns", "/templates"],
+      "advanced_idea": "Implement natural language processing to analyze subscriber feedback and automatically adjust personalization algorithms",
+      "category": "Newsletter & Content",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    },
+    {
+      "title": "Product Restock Alert",
+      "description": "Automatically notify customers when their previously viewed or wishlisted products are back in stock with personalized messaging.",
+      "trigger": "Webhook from ecommerce platform (product restocked)",
+      "node_sequence": "Webhook Trigger → BayEngage Get Contact → Product Data Enrichment → BayEngage Create Campaign → Send → Inventory Update",
+      "endpoints": ["/contacts", "/campaigns", "/templates", "/events"],
+      "advanced_idea": "Add urgency indicators and limited-time offers for high-demand restocked items",
+      "category": "Ecommerce & Transactional",
+      "difficulty": "Intermediate",
+      "ai_powered": false
+    },
+    {
+      "title": "Price Drop Notification",
+      "description": "Monitor product prices and automatically send personalized notifications to customers who showed interest in products that have dropped in price.",
+      "trigger": "Scheduled daily price check at 6 AM",
+      "node_sequence": "Schedule Trigger → Ecommerce API (price check) → BayEngage Get Interested Contacts → Price Comparison → BayEngage Send Campaign",
+      "endpoints": ["/contacts", "/campaigns", "/templates"],
+      "advanced_idea": "Implement AI to predict optimal discount thresholds and timing for maximum conversion",
+      "category": "Ecommerce & Transactional",
+      "difficulty": "Intermediate",
+      "ai_powered": false
+    },
+    {
+      "title": "Repeat Purchase Reminder",
+      "description": "Intelligently remind customers to repurchase products based on their consumption patterns and product lifecycle data.",
+      "trigger": "Scheduled analysis based on purchase history",
+      "node_sequence": "Schedule Trigger → BayEngage Get Contacts → Purchase Pattern Analysis → AI Timing Prediction → BayEngage Send Campaign",
+      "endpoints": ["/contacts", "/campaigns", "/reports"],
+      "advanced_idea": "Integrate with IoT devices or usage tracking to predict exact repurchase timing",
+      "category": "Ecommerce & Transactional",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    },
+    {
+      "title": "Post-Review Thank-You Campaign",
+      "description": "Automatically send personalized thank-you messages and exclusive offers to customers who leave positive reviews, encouraging continued engagement.",
+      "trigger": "Webhook from review platform (new review posted)",
+      "node_sequence": "Webhook Trigger → Review Analysis → BayEngage Get Contact → Thank-You Template Selection → BayEngage Send Campaign",
+      "endpoints": ["/contacts", "/campaigns", "/templates"],
+      "advanced_idea": "Use sentiment analysis to customize thank-you messages and offers based on review content and rating",
+      "category": "Ecommerce & Transactional",
+      "difficulty": "Intermediate",
+      "ai_powered": true
+    },
+    {
+      "title": "Lifecycle Stage Migration",
+      "description": "Automatically move contacts between lifecycle stages (prospect, lead, customer, VIP, churned) based on behavioral triggers and engagement patterns.",
+      "trigger": "BayEngage Contact Update or scheduled analysis",
+      "node_sequence": "BayEngage Trigger → Lifecycle Analysis → Stage Determination → BayEngage Update Contact → Welcome Campaign (if new stage)",
+      "endpoints": ["/contacts", "/campaigns", "/lists", "/events"],
+      "advanced_idea": "Implement predictive modeling to anticipate stage transitions before they happen",
+      "category": "Data-driven Segmentation",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    },
+    {
+      "title": "Facebook/Google Ads Retargeting Sync",
+      "description": "Automatically sync BayEngage contact data with Facebook and Google Ads for precise retargeting campaigns based on email engagement.",
+      "trigger": "BayEngage Contact Update or campaign completion",
+      "node_sequence": "BayEngage Trigger → Contact Data Processing → Facebook Ads API → Google Ads API → Audience Sync → Performance Tracking",
+      "endpoints": ["/contacts", "/campaigns", "/events"],
+      "advanced_idea": "Implement lookalike audience creation based on high-value email subscribers",
+      "category": "Cross-Channel & Integrations",
+      "difficulty": "Advanced",
+      "ai_powered": false
+    },
+    {
+      "title": "CRM Sync Workflow",
+      "description": "Bidirectional sync between HubSpot/Pipedrive and BayEngage to ensure contact data consistency and trigger campaigns based on CRM activities.",
+      "trigger": "Webhook from CRM (contact update/activity)",
+      "node_sequence": "CRM Webhook → Data Transformation → BayEngage Update Contact → Campaign Trigger Logic → BayEngage Send Campaign",
+      "endpoints": ["/contacts", "/campaigns", "/lists"],
+      "advanced_idea": "Add AI-powered lead scoring that syncs between platforms and triggers personalized nurture sequences",
+      "category": "Cross-Channel & Integrations",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    },
+    {
+      "title": "Campaign KPI Dashboard",
+      "description": "Automatically update a real-time dashboard with campaign performance metrics, sending alerts when KPIs fall below thresholds.",
+      "trigger": "Scheduled every 4 hours",
+      "node_sequence": "Schedule Trigger → BayEngage Get Reports → Data Aggregation → Dashboard Update → Alert Logic → Slack/Email Notifications",
+      "endpoints": ["/reports", "/campaigns"],
+      "advanced_idea": "Implement predictive analytics to forecast campaign performance and suggest optimizations",
+      "category": "Analytics & Reporting",
+      "difficulty": "Intermediate",
+      "ai_powered": true
+    },
+    {
+      "title": "Bounce Rate Monitor",
+      "description": "Continuously monitor bounce rates and automatically pause campaigns or clean lists when bounce rates exceed acceptable thresholds.",
+      "trigger": "Scheduled every 2 hours",
+      "node_sequence": "Schedule Trigger → BayEngage Get Reports → Bounce Analysis → Threshold Check → Auto-Pause Logic → List Cleanup",
+      "endpoints": ["/reports", "/campaigns", "/contacts"],
+      "advanced_idea": "Implement machine learning to predict bounce probability before sending",
+      "category": "Analytics & Reporting",
+      "difficulty": "Intermediate",
+      "ai_powered": true
+    },
+    {
+      "title": "Deliverability Health Monitor",
+      "description": "Monitor email deliverability metrics across all campaigns and automatically implement corrective actions to maintain sender reputation.",
+      "trigger": "Scheduled daily at 7 AM",
+      "node_sequence": "Schedule Trigger → BayEngage Get Reports → Deliverability Analysis → Reputation Check → Auto-Corrective Actions → Alert Team",
+      "endpoints": ["/reports", "/campaigns", "/contacts"],
+      "advanced_idea": "Integrate with third-party deliverability tools for comprehensive monitoring and automated remediation",
+      "category": "Analytics & Reporting",
+      "difficulty": "Advanced",
+      "ai_powered": false
+    },
+    {
+      "title": "UTM Link Tracker Aggregation",
+      "description": "Automatically track and aggregate UTM parameters from email campaigns to provide comprehensive attribution reporting across all marketing channels.",
+      "trigger": "BayEngage Campaign Send or click tracking",
+      "node_sequence": "BayEngage Trigger → UTM Extraction → Google Analytics API → Attribution Analysis → Report Generation → Dashboard Update",
+      "endpoints": ["/campaigns", "/reports", "/events"],
+      "advanced_idea": "Implement AI-powered attribution modeling to better understand customer journey touchpoints",
+      "category": "Analytics & Reporting",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    },
+    {
+      "title": "Sentiment-Based Campaign Adjustment",
+      "description": "Analyze customer feedback and social media sentiment to automatically adjust campaign messaging, timing, and targeting strategies.",
+      "trigger": "Scheduled daily sentiment analysis",
+      "node_sequence": "Schedule Trigger → Social Media API → Feedback Analysis → Sentiment Scoring → Campaign Adjustment Logic → BayEngage Update Campaigns",
+      "endpoints": ["/campaigns", "/templates", "/contacts"],
+      "advanced_idea": "Implement real-time sentiment monitoring with automatic campaign pivots during negative sentiment spikes",
+      "category": "Advanced / AI-Powered",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    },
+    {
+      "title": "Performance Summary Writer",
+      "description": "Use AI to automatically generate comprehensive monthly marketing reports with insights, recommendations, and performance analysis.",
+      "trigger": "Scheduled monthly on the 1st at 9 AM",
+      "node_sequence": "Schedule Trigger → BayEngage Get Reports → Data Aggregation → AI Report Generator → Email Distribution → Dashboard Update",
+      "endpoints": ["/reports", "/campaigns", "/contacts"],
+      "advanced_idea": "Add predictive forecasting and competitive analysis to monthly reports",
+      "category": "Advanced / AI-Powered",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    },
+    {
+      "title": "Dynamic Content Testing",
+      "description": "Automatically test different content variations (headlines, images, CTAs) and use AI to determine the best performing combinations for each contact segment.",
+      "trigger": "BayEngage Campaign Send",
+      "node_sequence": "BayEngage Trigger → Content Variation Generator → A/B Test Setup → Performance Tracking → AI Winner Selection → Campaign Optimization",
+      "endpoints": ["/campaigns", "/templates", "/reports"],
+      "advanced_idea": "Implement multi-armed bandit algorithms for continuous optimization without traditional A/B testing",
+      "category": "Optimization & A/B Testing",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    },
+    {
+      "title": "Pre-Order Launch Campaign",
+      "description": "Create anticipation and drive pre-orders for upcoming product launches with countdown timers, exclusive access, and early-bird pricing.",
+      "trigger": "Scheduled based on product launch timeline",
+      "node_sequence": "Schedule Trigger → Product Data Enrichment → BayEngage Create Campaign → Countdown Timer Integration → Send → Pre-Order Tracking",
+      "endpoints": ["/campaigns", "/templates", "/contacts"],
+      "advanced_idea": "Add AI-powered demand forecasting to optimize pre-order pricing and inventory allocation",
+      "category": "Ecommerce & Transactional",
+      "difficulty": "Intermediate",
+      "ai_powered": false
+    },
+    {
+      "title": "Daily Trend Email",
+      "description": "Automatically curate and send daily trend emails featuring trending products, news, or content based on real-time data and customer interests.",
+      "trigger": "Scheduled daily at 6 AM",
+      "node_sequence": "Schedule Trigger → Trend Data APIs → Content Curation → Personalization Engine → BayEngage Send Campaign",
+      "endpoints": ["/campaigns", "/templates", "/contacts"],
+      "advanced_idea": "Implement machine learning to predict which trends will be most relevant to each subscriber",
+      "category": "Newsletter & Content",
+      "difficulty": "Advanced",
+      "ai_powered": true
+    }
+  ],
+  "metadata": {
+    "total_automations": 20,
+    "categories": {
+      "Optimization & A/B Testing": 3,
+      "Newsletter & Content": 3,
+      "Ecommerce & Transactional": 5,
+      "Data-driven Segmentation": 1,
+      "Cross-Channel & Integrations": 2,
+      "Analytics & Reporting": 4,
+      "Advanced / AI-Powered": 2
+    },
+    "difficulty_levels": {
+      "Intermediate": 6,
+      "Advanced": 14
+    },
+    "ai_powered_count": 12,
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "version": "1.0"
+  }
+}
