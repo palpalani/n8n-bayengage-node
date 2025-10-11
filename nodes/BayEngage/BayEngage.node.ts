@@ -84,7 +84,8 @@ export class BayEngage implements INodeType {
 					{
 						name: 'Create or Update',
 						value: 'upsert',
-						description: 'Create a new record, or update the current one if it already exists (upsert)',
+						description:
+							'Create a new record, or update the current one if it already exists (upsert)',
 						action: 'Upsert a contact',
 					},
 					{
@@ -526,7 +527,7 @@ export class BayEngage implements INodeType {
 				const operation = this.getNodeParameter('operation', i) as string;
 
 				// Get credentials
-				const credentials = await this.getCredentials('bayEngageApi') as BayEngageCredentials;
+				const credentials = (await this.getCredentials('bayEngageApi')) as BayEngageCredentials;
 				const bayEngageRequest = createBayEngageRequest(credentials);
 
 				let responseData: any;
@@ -575,7 +576,10 @@ export class BayEngage implements INodeType {
 								qs: { email },
 							});
 						} else {
-							throw new NodeOperationError(this.getNode(), 'Either Contact ID or Email must be provided');
+							throw new NodeOperationError(
+								this.getNode(),
+								'Either Contact ID or Email must be provided',
+							);
 						}
 					} else if (operation === 'update') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
@@ -776,7 +780,6 @@ export class BayEngage implements INodeType {
 					json: responseData,
 					pairedItem: { item: i },
 				});
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({

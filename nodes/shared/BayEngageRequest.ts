@@ -1,6 +1,4 @@
-import {
-	IHttpRequestOptions,
-} from 'n8n-workflow';
+import { IHttpRequestOptions } from 'n8n-workflow';
 
 // Type declarations for global functions
 declare global {
@@ -70,7 +68,7 @@ export class BayEngageRequest {
 	private async getAuthHeaders(): Promise<Record<string, string>> {
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
-			'Accept': 'application/json',
+			Accept: 'application/json',
 		};
 
 		if (this.credentials.authMode === 'header_keys') {
@@ -107,15 +105,13 @@ export class BayEngageRequest {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/x-www-form-urlencoded',
-					'Accept': 'application/json',
+					Accept: 'application/json',
 				},
 				body: new URLSearchParams(tokenData).toString(),
 			});
 
 			if (!response.ok) {
-				throw new Error(
-					`Failed to get access token: ${response.status} ${response.statusText}`,
-				);
+				throw new Error(`Failed to get access token: ${response.status} ${response.statusText}`);
 			}
 
 			const tokenResponse = await response.json();
@@ -125,9 +121,7 @@ export class BayEngageRequest {
 
 			return this.accessToken as string;
 		} catch (error) {
-			throw new Error(
-				`Failed to authenticate with BayEngage: ${error.message}`,
-			);
+			throw new Error(`Failed to authenticate with BayEngage: ${error.message}`);
 		}
 	}
 
@@ -135,14 +129,7 @@ export class BayEngageRequest {
 	 * Make a request to the BayEngage API with retry logic
 	 */
 	async makeRequest<T = any>(options: BayEngageRequestOptions): Promise<BayEngageResponse<T>> {
-		const {
-			url,
-			method = 'GET',
-			body,
-			qs,
-			timeout = 30000,
-			retries = 3,
-		} = options;
+		const { url, method = 'GET', body, qs, timeout = 30000, retries = 3 } = options;
 
 		const authHeaders = await this.getAuthHeaders();
 		const requestOptions: RequestInit = {
@@ -180,7 +167,7 @@ export class BayEngageRequest {
 					const delay = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
 
 					if (attempt < retries) {
-						await new Promise(resolve => setTimeout(resolve, delay));
+						await new Promise((resolve) => setTimeout(resolve, delay));
 						continue;
 					}
 				}
@@ -211,7 +198,6 @@ export class BayEngageRequest {
 
 				const responseData = await response.json();
 				return responseData;
-
 			} catch (error) {
 				lastError = error;
 
@@ -223,7 +209,7 @@ export class BayEngageRequest {
 				// Wait before retrying (exponential backoff)
 				if (attempt < retries) {
 					const delay = Math.pow(2, attempt) * 1000;
-					await new Promise<void>(resolve => setTimeout(() => resolve(), delay));
+					await new Promise<void>((resolve) => setTimeout(() => resolve(), delay));
 				}
 			}
 		}
@@ -261,7 +247,10 @@ export function handlePagination<T>(
 	items: T[],
 	page: number = 1,
 	limit: number = 50,
-): { data: T[]; meta: { pagination: { page: number; limit: number; total: number; totalPages: number } } } {
+): {
+	data: T[];
+	meta: { pagination: { page: number; limit: number; total: number; totalPages: number } };
+} {
 	const startIndex = (page - 1) * limit;
 	const endIndex = startIndex + limit;
 	const paginatedItems = items.slice(startIndex, endIndex);

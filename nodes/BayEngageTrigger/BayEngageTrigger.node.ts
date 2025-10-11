@@ -217,7 +217,10 @@ export class BayEngageTrigger implements INodeType {
 
 			// Verify webhook signature using HMAC-SHA256
 			// BayEngage should send the signature in X-Signature or X-Hub-Signature-256 header
-			const expectedSignature = BayEngageTrigger.generateSignature(JSON.stringify(body), webhookSecret);
+			const expectedSignature = BayEngageTrigger.generateSignature(
+				JSON.stringify(body),
+				webhookSecret,
+			);
 			if (signature !== expectedSignature) {
 				throw new NodeOperationError(this.getNode(), 'Invalid webhook signature');
 			}
@@ -229,7 +232,8 @@ export class BayEngageTrigger implements INodeType {
 		// Check if this event should trigger the workflow
 		if (eventType !== 'all' && receivedEventType !== eventType) {
 			// Check custom event types
-			const customEventTypes = additionalFields.customEventTypes?.split(',').map((t: string) => t.trim()) || [];
+			const customEventTypes =
+				additionalFields.customEventTypes?.split(',').map((t: string) => t.trim()) || [];
 			if (!customEventTypes.includes(receivedEventType)) {
 				return { workflowData: [] };
 			}
@@ -269,10 +273,7 @@ export class BayEngageTrigger implements INodeType {
 	 */
 	private static generateSignature(payload: string, secret: string): string {
 		// Generate HMAC-SHA256 signature
-		const signature = crypto
-			.createHmac('sha256', secret)
-			.update(payload, 'utf8')
-			.digest('hex');
+		const signature = crypto.createHmac('sha256', secret).update(payload, 'utf8').digest('hex');
 
 		return `sha256=${signature}`;
 	}
