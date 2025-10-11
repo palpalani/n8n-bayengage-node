@@ -1,5 +1,5 @@
 {
-  "name": "@bayengage/n8n-nodes-bayengage",
+  "name": "n8n-nodes-bayengage",
   "version": "0.1.0",
   "description": "n8n community node for BayEngage email marketing platform",
   "keywords": [
@@ -49,7 +49,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
+    "@types/node": "^24.7.2",
     "@typescript-eslint/parser": "~8.46.0",
+    "@vitest/ui": "^1.0.0",
     "eslint": "^9.37.0",
     "eslint-plugin-json": "^4.0.1",
     "eslint-plugin-n8n-nodes-base": "^1.16.4",
@@ -58,8 +60,7 @@
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.0",
-    "vitest": "^1.0.0",
-    "@vitest/ui": "^1.0.0"
+    "vitest": "^1.0.0"
   },
   "peerDependencies": {
     "n8n-workflow": "*"

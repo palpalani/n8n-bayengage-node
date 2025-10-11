@@ -5,19 +5,6 @@ import {
 // Type declarations for global functions
 declare global {
 	function fetch(input: string | URL, init?: RequestInit): Promise<Response>;
-	class URLSearchParams {
-		constructor(init?: string[][] | Record<string, string> | string | URLSearchParams);
-		toString(): string;
-		append(name: string, value: string): void;
-	}
-	class URL {
-		constructor(input: string, base?: string | URL);
-		searchParams: URLSearchParams;
-		toString(): string;
-	}
-	class AbortSignal {
-		static timeout(ms: number): AbortSignal;
-	}
 	interface RequestInit {
 		method?: string;
 		headers?: Record<string, string>;

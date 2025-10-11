@@ -7,6 +7,7 @@ import {
 	NodeOperationError,
 	IHookFunctions,
 } from 'n8n-workflow';
+import * as crypto from 'crypto';
 
 // Type declaration for btoa
 declare global {
@@ -214,8 +215,8 @@ export class BayEngageTrigger implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'Missing webhook signature');
 			}
 
-			// Note: BayEngage may use different signature verification methods
-			// This is a placeholder - implement actual signature verification based on BayEngage docs
+			// Verify webhook signature using HMAC-SHA256
+			// BayEngage should send the signature in X-Signature or X-Hub-Signature-256 header
 			const expectedSignature = BayEngageTrigger.generateSignature(JSON.stringify(body), webhookSecret);
 			if (signature !== expectedSignature) {
 				throw new NodeOperationError(this.getNode(), 'Invalid webhook signature');
@@ -264,12 +265,15 @@ export class BayEngageTrigger implements INodeType {
 
 	/**
 	 * Generate webhook signature for verification
-	 * Note: This is a placeholder implementation - update based on BayEngage's actual signature method
+	 * Implements HMAC-SHA256 signature generation for webhook verification
 	 */
 	private static generateSignature(payload: string, secret: string): string {
-		// This is a placeholder - implement actual signature generation based on BayEngage docs
-		// Common methods include HMAC-SHA256 or HMAC-SHA1
-		// In a real implementation, you would use a proper crypto library
-		return 'sha256=' + btoa(payload + secret);
+		// Generate HMAC-SHA256 signature
+		const signature = crypto
+			.createHmac('sha256', secret)
+			.update(payload, 'utf8')
+			.digest('hex');
+
+		return `sha256=${signature}`;
 	}
 }

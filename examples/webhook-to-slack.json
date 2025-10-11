@@ -8,7 +8,7 @@
       },
       "id": "bayengage-trigger",
       "name": "BayEngage Webhook",
-      "type": "@bayengage/n8n-nodes-bayengage.bayEngageTrigger",
+      "type": "n8n-nodes-bayengage.bayEngageTrigger",
       "typeVersion": 1,
       "position": [240, 300],
       "webhookId": "bayengage-webhook"

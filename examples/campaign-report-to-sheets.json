@@ -9,7 +9,7 @@
       },
       "id": "bayengage-get-reports",
       "name": "Get Campaign Reports",
-      "type": "@bayengage/n8n-nodes-bayengage.bayEngage",
+      "type": "n8n-nodes-bayengage.bayEngage",
       "typeVersion": 1,
       "position": [240, 300],
       "credentials": {
