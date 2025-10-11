@@ -1,0 +1,393 @@
+{
+  "name": "AI Campaign Creation Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Weekly AI Campaign Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "list",
+        "limit": 100
+      },
+      "id": "get-audience",
+      "name": "Get Target Audience",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Analyze audience demographics and preferences\nconst audience = items[0].json.data.contacts || [];\n\n// Calculate audience insights\nconst totalContacts = audience.length;\nconst avgAge = audience.reduce((sum, contact) => sum + (contact.age || 30), 0) / totalContacts;\nconst interests = audience.reduce((acc, contact) => {\n  if (contact.interests) {\n    contact.interests.forEach(interest => {\n      acc[interest] = (acc[interest] || 0) + 1;\n    });\n  }\n  return acc;\n}, {});\n\nconst topInterests = Object.entries(interests)\n  .sort(([,a], [,b]) => b - a)\n  .slice(0, 3)\n  .map(([interest]) => interest);\n\nconst audienceProfile = {\n  total_contacts: totalContacts,\n  average_age: Math.round(avgAge),\n  top_interests: topInterests,\n  engagement_level: audience.filter(c => c.last_engagement_date).length / totalContacts,\n  preferred_content_type: 'email',\n  timezone: 'UTC'\n};\n\nreturn [{ json: audienceProfile }];"
+      },
+      "id": "analyze-audience",
+      "name": "Analyze Audience Profile",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert email marketing strategist and copywriter. Create compelling email campaigns based on audience analysis. Generate subject lines, email content, and call-to-action buttons that are engaging and conversion-focused."
+            },
+            {
+              "role": "user",
+              "content": "Create an email campaign for this audience profile: {{ JSON.stringify($json) }}. Include:\n1. 3 compelling subject line options\n2. Complete HTML email content\n3. Call-to-action button text\n4. Campaign strategy recommendations\n\nFormat the response as JSON with fields: subject_lines, html_content, cta_text, strategy_recommendations"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.8,
+          "maxTokens": 1500
+        }
+      },
+      "id": "ai-generate-content",
+      "name": "AI Generate Campaign Content",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse AI-generated content and select best subject line\nconst aiResponse = items[0].json.choices[0].message.content;\nlet campaignData;\n\ntry {\n  campaignData = JSON.parse(aiResponse);\n} catch (error) {\n  // Fallback if JSON parsing fails\n  campaignData = {\n    subject_lines: [\"Special Offer Inside!\", \"Don't Miss Out!\", \"Limited Time Deal!\"],\n    html_content: \"<h1>Special Offer</h1><p>Check out our latest deals!</p>\",\n    cta_text: \"Shop Now\",\n    strategy_recommendations: [\"Focus on urgency\", \"Use social proof\"]\n  };\n}\n\n// Select the first subject line (could be enhanced with A/B testing logic)\nconst selectedSubject = campaignData.subject_lines[0];\n\n// Enhance HTML content with proper styling\nconst enhancedHtml = `\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>${selectedSubject}</title>\n    <style>\n        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n        .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n        .header { background-color: #007bff; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }\n        .content { background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n        .cta-button { display: inline-block; background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }\n        .footer { text-align: center; margin-top: 30px; padding: 20px; color: #666; font-size: 14px; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>🎉 Special Offer</h1>\n        </div>\n        <div class=\"content\">\n            ${campaignData.html_content}\n            <div style=\"text-align: center;\">\n                <a href=\"https://example.com/shop\" class=\"cta-button\">${campaignData.cta_text}</a>\n            </div>\n        </div>\n        <div class=\"footer\">\n            <p>Thanks for being a valued customer!</p>\n            <p><a href=\"#\" style=\"color: #007bff;\">Unsubscribe</a> | <a href=\"#\" style=\"color: #007bff;\">Update Preferences</a></p>\n        </div>\n    </div>\n</body>\n</html>\n`;\n\nreturn [{\n  json: {\n    campaign_name: `AI Generated Campaign - ${new Date().toISOString().split('T')[0]}`,\n    subject_line: selectedSubject,\n    html_content: enhancedHtml,\n    cta_text: campaignData.cta_text,\n    strategy_recommendations: campaignData.strategy_recommendations,\n    all_subject_lines: campaignData.subject_lines,\n    generated_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-ai-content",
+      "name": "Process AI Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "={{ $json.campaign_name }}",
+        "templateContent": "={{ $json.html_content }}"
+      },
+      "id": "create-ai-template",
+      "name": "Create AI Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "={{ $json.campaign_name }}",
+        "campaignSubject": "={{ $json.subject_line }}",
+        "campaignContent": "={{ $json.html_content }}",
+        "recipientList": "ai-campaign-audience"
+      },
+      "id": "create-ai-campaign",
+      "name": "Create AI Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-ai-campaign",
+      "name": "Send AI Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1780, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "AI Campaign Generated and Sent!",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*🤖 AI Campaign Generated and Sent*\n\n*Campaign Name:* {{ $json.campaign_name }}\n*Subject Line:* {{ $json.subject_line }}\n*Campaign ID:* {{ $json.campaign_id }}\n*Generated At:* {{ $json.generated_at }}\n\n*Strategy Recommendations:*\n{{ $json.strategy_recommendations.map(rec => `• ${rec}`).join('\\n') }}\n\n*Alternative Subject Lines:*\n{{ $json.all_subject_lines.map(subject => `• ${subject}`).join('\\n') }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2000, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "AI Campaigns",
+        "columnToMatchOn": "Campaign ID",
+        "valueToMatchOn": "={{ $json.campaign_id }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Campaign ID",
+              "fieldValue": "={{ $json.campaign_id }}"
+            },
+            {
+              "column": "Campaign Name",
+              "fieldValue": "={{ $json.campaign_name }}"
+            },
+            {
+              "column": "Subject Line",
+              "fieldValue": "={{ $json.subject_line }}"
+            },
+            {
+              "column": "CTA Text",
+              "fieldValue": "={{ $json.cta_text }}"
+            },
+            {
+              "column": "Generated At",
+              "fieldValue": "={{ $json.generated_at }}"
+            },
+            {
+              "column": "Strategy Recommendations",
+              "fieldValue": "={{ $json.strategy_recommendations.join('; ') }}"
+            },
+            {
+              "column": "All Subject Lines",
+              "fieldValue": "={{ $json.all_subject_lines.join('; ') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-ai-campaign",
+      "name": "Log AI Campaign",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2220, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "track",
+        "eventName": "ai_campaign_created",
+        "eventProperties": {
+          "properties": [
+            {
+              "name": "campaign_id",
+              "value": "={{ $json.campaign_id }}"
+            },
+            {
+              "name": "campaign_name",
+              "value": "={{ $json.campaign_name }}"
+            },
+            {
+              "name": "subject_line",
+              "value": "={{ $json.subject_line }}"
+            },
+            {
+              "name": "ai_generated",
+              "value": "true"
+            }
+          ]
+        }
+      },
+      "id": "track-ai-campaign-event",
+      "name": "Track AI Campaign Event",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2440, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "get-audience",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-audience": {
+      "main": [
+        [
+          {
+            "node": "analyze-audience",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "analyze-audience": {
+      "main": [
+        [
+          {
+            "node": "ai-generate-content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai-generate-content": {
+      "main": [
+        [
+          {
+            "node": "process-ai-content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process-ai-content": {
+      "main": [
+        [
+          {
+            "node": "create-ai-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-ai-template": {
+      "main": [
+        [
+          {
+            "node": "create-ai-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-ai-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-ai-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-ai-campaign": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slack-notification": {
+      "main": [
+        [
+          {
+            "node": "log-ai-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log-ai-campaign": {
+      "main": [
+        [
+          {
+            "node": "track-ai-campaign-event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["ai", "automation", "campaign-creation", "gpt"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,408 @@
+{
+  "name": "Churn Prediction Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily Churn Analysis Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "list",
+        "limit": 1000
+      },
+      "id": "get-all-contacts",
+      "name": "Get All Contacts",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Analyze contact engagement patterns for churn prediction\nconst contacts = items[0].json.data.contacts || [];\nconst currentDate = new Date();\nconst thirtyDaysAgo = new Date(currentDate.getTime() - (30 * 24 * 60 * 60 * 1000));\nconst sevenDaysAgo = new Date(currentDate.getTime() - (7 * 24 * 60 * 60 * 1000));\n\nconst churnAnalysis = contacts.map(contact => {\n  const lastEngagement = contact.last_engagement_date ? new Date(contact.last_engagement_date) : null;\n  const signupDate = contact.created_at ? new Date(contact.created_at) : null;\n  const daysSinceEngagement = lastEngagement ? Math.floor((currentDate - lastEngagement) / (1000 * 60 * 60 * 24)) : 999;\n  const daysSinceSignup = signupDate ? Math.floor((currentDate - signupDate) / (1000 * 60 * 60 * 24)) : 0;\n  \n  // Calculate engagement score (0-100)\n  let engagementScore = 100;\n  \n  // Reduce score based on days since last engagement\n  if (daysSinceEngagement > 30) engagementScore -= 50;\n  else if (daysSinceEngagement > 14) engagementScore -= 30;\n  else if (daysSinceEngagement > 7) engagementScore -= 15;\n  \n  // Reduce score based on email activity\n  const emailOpenRate = contact.email_open_rate || 0;\n  const emailClickRate = contact.email_click_rate || 0;\n  \n  if (emailOpenRate < 0.1) engagementScore -= 20;\n  else if (emailOpenRate < 0.2) engagementScore -= 10;\n  \n  if (emailClickRate < 0.02) engagementScore -= 15;\n  else if (emailClickRate < 0.05) engagementScore -= 8;\n  \n  // Reduce score for new users with low engagement\n  if (daysSinceSignup < 7 && engagementScore < 50) engagementScore -= 20;\n  \n  // Determine churn risk level\n  let churnRisk = 'low';\n  if (engagementScore < 30) churnRisk = 'high';\n  else if (engagementScore < 50) churnRisk = 'medium';\n  \n  return {\n    contact_id: contact.id,\n    email: contact.email,\n    first_name: contact.first_name,\n    last_name: contact.last_name,\n    engagement_score: Math.max(0, engagementScore),\n    churn_risk: churnRisk,\n    days_since_engagement: daysSinceEngagement,\n    days_since_signup: daysSinceSignup,\n    email_open_rate: emailOpenRate,\n    email_click_rate: emailClickRate,\n    last_engagement_date: contact.last_engagement_date\n  };\n});\n\n// Filter high-risk contacts\nconst highRiskContacts = churnAnalysis.filter(contact => contact.churn_risk === 'high');\nconst mediumRiskContacts = churnAnalysis.filter(contact => contact.churn_risk === 'medium');\n\nreturn [{\n  json: {\n    analysis_date: currentDate.toISOString().split('T')[0],\n    total_contacts: contacts.length,\n    high_risk_count: highRiskContacts.length,\n    medium_risk_count: mediumRiskContacts.length,\n    high_risk_contacts: highRiskContacts,\n    medium_risk_contacts: mediumRiskContacts,\n    churn_rate: ((highRiskContacts.length + mediumRiskContacts.length) / contacts.length * 100).toFixed(2)\n  }\n}];"
+      },
+      "id": "analyze-churn-risk",
+      "name": "Analyze Churn Risk",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.high_risk_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-high-risk",
+      "name": "Filter High Risk Contacts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Churn Prevention - High Risk",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>We Miss You!</title>\n</head>\n<body>\n    <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n        <h1 style=\"color: #dc3545;\">We Miss You, {{ $json.first_name }}!</h1>\n        <p>We noticed you haven't been as active lately, and we're concerned we might be losing you.</p>\n        \n        <div style=\"background-color: #fff3cd; padding: 20px; margin: 20px 0; border-left: 4px solid #ffc107;\">\n            <h2>🎁 Special Comeback Offer</h2>\n            <p>As a valued member, we're offering you an exclusive 25% discount on your next purchase!</p>\n            <p><strong>Use code: COMEBACK25</strong></p>\n        </div>\n        \n        <div style=\"background-color: #f8f9fa; padding: 20px; margin: 20px 0;\">\n            <h3>What's New?</h3>\n            <ul>\n                <li>New features you might have missed</li>\n                <li>Updated content and resources</li>\n                <li>Community highlights and success stories</li>\n            </ul>\n        </div>\n        \n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"https://example.com/dashboard\" style=\"background-color: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;\">Visit Your Dashboard</a>\n        </div>\n        \n        <p>We'd love to hear from you! Reply to this email and let us know how we can better serve you.</p>\n        <p>Best regards,<br>The Customer Success Team</p>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-churn-prevention-template",
+      "name": "Create Churn Prevention Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1120, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Create personalized campaigns for high-risk contacts\nconst highRiskContacts = items[0].json.high_risk_contacts;\n\nconst campaigns = highRiskContacts.map(contact => ({\n  contact_id: contact.contact_id,\n  email: contact.email,\n  first_name: contact.first_name,\n  last_name: contact.last_name,\n  engagement_score: contact.engagement_score,\n  churn_risk: contact.churn_risk,\n  days_since_engagement: contact.days_since_engagement,\n  personalized_message: `Hi ${contact.first_name}, we noticed you haven't been active for ${contact.days_since_engagement} days. We have something special for you!`\n}));\n\nreturn campaigns.map(campaign => ({ json: campaign }));"
+      },
+      "id": "create-personalized-campaigns",
+      "name": "Create Personalized Campaigns",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Churn Prevention - {{ $json.first_name }} {{ $json.last_name }}",
+        "campaignSubject": "We miss you, {{ $json.first_name }}! Special offer inside 🎁",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "churn-prevention-list"
+      },
+      "id": "create-churn-prevention-campaign",
+      "name": "Create Churn Prevention Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-churn-prevention",
+      "name": "Send Churn Prevention Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1560, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#customer-success",
+        "text": "Churn Alert: {{ $json.high_risk_count }} high-risk contacts identified",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*🚨 Churn Prediction Alert*\n\n*Analysis Date:* {{ $json.analysis_date }}\n*Total Contacts:* {{ $json.total_contacts }}\n*High Risk:* {{ $json.high_risk_count }}\n*Medium Risk:* {{ $json.medium_risk_count }}\n*Churn Rate:* {{ $json.churn_rate }}%\n\n*High Risk Contacts:*\n{{ $json.high_risk_contacts.map(contact => `• ${contact.first_name} ${contact.last_name} (${contact.email}) - Score: ${contact.engagement_score}`).join('\\n') }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-churn-alert",
+      "name": "Slack Churn Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1780, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "Churn Analysis",
+        "columnToMatchOn": "Analysis Date",
+        "valueToMatchOn": "={{ $json.analysis_date }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Analysis Date",
+              "fieldValue": "={{ $json.analysis_date }}"
+            },
+            {
+              "column": "Total Contacts",
+              "fieldValue": "={{ $json.total_contacts }}"
+            },
+            {
+              "column": "High Risk Count",
+              "fieldValue": "={{ $json.high_risk_count }}"
+            },
+            {
+              "column": "Medium Risk Count",
+              "fieldValue": "={{ $json.medium_risk_count }}"
+            },
+            {
+              "column": "Churn Rate %",
+              "fieldValue": "={{ $json.churn_rate }}%"
+            },
+            {
+              "column": "Analysis Timestamp",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-churn-analysis",
+      "name": "Log Churn Analysis",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2000, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Create detailed churn report for CRM integration\nconst analysis = items[0].json;\n\nconst report = {\n  report_date: analysis.analysis_date,\n  summary: {\n    total_contacts: analysis.total_contacts,\n    high_risk_count: analysis.high_risk_count,\n    medium_risk_count: analysis.medium_risk_count,\n    churn_rate: analysis.churn_rate\n  },\n  high_risk_contacts: analysis.high_risk_contacts.map(contact => ({\n    contact_id: contact.contact_id,\n    email: contact.email,\n    name: `${contact.first_name} ${contact.last_name}`,\n    engagement_score: contact.engagement_score,\n    days_since_engagement: contact.days_since_engagement,\n    recommended_action: contact.engagement_score < 20 ? 'Immediate intervention' : 'Send retention campaign'\n  })),\n  recommendations: [\n    'Implement immediate retention campaigns for high-risk contacts',\n    'Review engagement strategies for medium-risk contacts',\n    'Analyze common patterns among high-risk contacts',\n    'Consider product improvements based on churn indicators'\n  ]\n};\n\nreturn [{ json: report }];"
+      },
+      "id": "generate-churn-report",
+      "name": "Generate Churn Report",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2220, 300]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "track",
+        "eventName": "churn_analysis_completed",
+        "eventProperties": {
+          "properties": [
+            {
+              "name": "total_contacts",
+              "value": "={{ $json.summary.total_contacts }}"
+            },
+            {
+              "name": "high_risk_count",
+              "value": "={{ $json.summary.high_risk_count }}"
+            },
+            {
+              "name": "churn_rate",
+              "value": "={{ $json.summary.churn_rate }}"
+            }
+          ]
+        }
+      },
+      "id": "track-churn-event",
+      "name": "Track Churn Event",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2440, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "get-all-contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-all-contacts": {
+      "main": [
+        [
+          {
+            "node": "analyze-churn-risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "analyze-churn-risk": {
+      "main": [
+        [
+          {
+            "node": "filter-high-risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-high-risk": {
+      "main": [
+        [
+          {
+            "node": "create-churn-prevention-template",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "create-personalized-campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-churn-prevention-template": {
+      "main": [
+        [
+          {
+            "node": "create-churn-prevention-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-personalized-campaigns": {
+      "main": [
+        [
+          {
+            "node": "create-churn-prevention-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-churn-prevention-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-churn-prevention",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-churn-prevention": {
+      "main": [
+        [
+          {
+            "node": "slack-churn-alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slack-churn-alert": {
+      "main": [
+        [
+          {
+            "node": "log-churn-analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log-churn-analysis": {
+      "main": [
+        [
+          {
+            "node": "generate-churn-report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-churn-report": {
+      "main": [
+        [
+          {
+            "node": "track-churn-event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["churn", "prediction", "retention", "ai"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

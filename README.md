@@ -11,7 +11,7 @@ This is an n8n community node that provides seamless integration with BayEngage,
 [Credentials](#credentials)  
 [Compatibility](#compatibility)  
 [Usage](#usage)  
-[Examples](#examples)  
+[Workflow Examples Library](#workflow-examples-library)  
 [Resources](#resources)  
 [Version History](#version-history)
 
@@ -174,9 +174,237 @@ A webhook trigger node for real-time event processing:
 2. Use the **BayEngage Trigger** node to respond to campaign events
 3. Combine with other n8n nodes for complex automation workflows
 
-## Examples
+## Workflow Examples Library
 
-Check out the example workflows in the `examples/` directory:
+A comprehensive collection of production-ready n8n workflow examples that demonstrate how to use the `n8n-node-bayengage` community node for various marketing automation scenarios.
+
+### 1️⃣ Lifecycle / Drip & Nurture Campaigns
+
+#### Welcome Series
+**Description**: Automated welcome email sequence for new subscribers with personalized content based on signup source and user preferences.
+
+**Trigger**: BayEngage Trigger (contact.created) → Filter by signup source
+**Example Node Sequence**: 
+- BayEngage Trigger → Filter → Switch (by signup source) → BayEngage (Create Campaign) → BayEngage (Send Campaign) → Slack Notification
+
+**BayEngage Endpoints**: `/contacts`, `/campaigns`, `/templates`
+**Optional AI Extension**: Use OpenAI to generate personalized welcome content based on user profile data
+
+**File**: `examples/welcome-series.json`
+
+---
+
+#### Abandoned Cart Recovery
+**Description**: Multi-stage abandoned cart recovery with escalating urgency and personalized offers.
+
+**Trigger**: BayEngage Trigger (order.created) → Filter (abandoned status)
+**Example Node Sequence**: 
+- BayEngage Trigger → Wait (1 hour) → BayEngage (Get Contact) → BayEngage (Create Campaign) → BayEngage (Send Campaign) → Wait (24 hours) → Follow-up Campaign
+
+**BayEngage Endpoints**: `/contacts`, `/campaigns`, `/events`
+**Optional AI Extension**: AI-powered discount optimization based on cart value and user behavior
+
+**File**: `examples/abandoned-cart-recovery.json`
+
+---
+
+#### Post-Purchase Follow-Up
+**Description**: Automated follow-up sequence after purchase completion with order details, shipping updates, and cross-sell opportunities.
+
+**Trigger**: BayEngage Trigger (order.created)
+**Example Node Sequence**: 
+- BayEngage Trigger → Filter (order status) → BayEngage (Get Contact) → BayEngage (Create Campaign) → BayEngage (Send Campaign) → CRM Update
+
+**BayEngage Endpoints**: `/contacts`, `/campaigns`, `/events`
+**Optional AI Extension**: AI-powered product recommendations based on purchase history and user preferences
+
+**File**: `examples/post-purchase-followup.json`
+
+---
+
+### 2️⃣ Campaign Optimization & Testing
+
+#### A/B Test Campaign
+**Description**: Automated A/B testing workflow that creates multiple campaign variants and measures performance to determine winning content.
+
+**Trigger**: Manual trigger or schedule
+**Example Node Sequence**: 
+- Manual Trigger → BayEngage (Create Campaign A) → BayEngage (Create Campaign B) → BayEngage (Send Campaign A) → BayEngage (Send Campaign B) → Wait (24 hours) → BayEngage (Get Reports) → Google Sheets (Log Results)
+
+**BayEngage Endpoints**: `/campaigns`, `/campaigns/{id}/reports`
+**Optional AI Extension**: AI-powered variant generation and statistical significance analysis
+
+**File**: `examples/ab-test-campaign.json`
+
+---
+
+#### Send-Time Optimization
+**Description**: Dynamic send-time optimization based on individual user engagement patterns and timezone data.
+
+**Trigger**: Schedule Trigger (hourly)
+**Example Node Sequence**: 
+- Schedule Trigger → BayEngage (List Contacts) → Filter (by timezone) → BayEngage (Get Contact Engagement) → Switch (by optimal send time) → BayEngage (Send Campaign)
+
+**BayEngage Endpoints**: `/contacts`, `/campaigns`, `/events`
+**Optional AI Extension**: Machine learning model to predict optimal send times per user based on historical engagement data
+
+**File**: `examples/send-time-optimization.json`
+
+---
+
+### 3️⃣ Newsletter & Content Campaigns
+
+#### Newsletter Aggregation (RSS → Email)
+**Description**: Automated newsletter creation by aggregating content from multiple RSS feeds and sending curated content to subscribers.
+
+**Trigger**: Schedule Trigger (daily/weekly)
+**Example Node Sequence**: 
+- Schedule Trigger → RSS Feed Reader → Content Aggregator → OpenAI (Summarize Content) → BayEngage (Create Template) → BayEngage (Create Campaign) → BayEngage (Send Campaign)
+
+**BayEngage Endpoints**: `/templates`, `/campaigns`
+**Optional AI Extension**: AI-powered content curation, summarization, and personalized content recommendations
+
+**File**: `examples/newsletter-rss-aggregation.json`
+
+---
+
+#### Weekly Digest Automation
+**Description**: Automated weekly digest emails with personalized content, product updates, and user-specific recommendations.
+
+**Trigger**: Schedule Trigger (weekly)
+**Example Node Sequence**: 
+- Schedule Trigger → BayEngage (List Contacts) → Filter (by preferences) → Content Aggregator → BayEngage (Create Campaign) → BayEngage (Send Campaign) → Analytics Log
+
+**BayEngage Endpoints**: `/contacts`, `/campaigns`, `/templates`
+**Optional AI Extension**: AI-powered content personalization and user preference learning
+
+**File**: `examples/weekly-digest-automation.json`
+
+---
+
+### 4️⃣ Transactional & Behavioural Campaigns
+
+#### Order Confirmation
+**Description**: Automated order confirmation emails with order details, tracking information, and next steps.
+
+**Trigger**: BayEngage Trigger (order.created)
+**Example Node Sequence**: 
+- BayEngage Trigger → Filter (order status) → BayEngage (Get Contact) → BayEngage (Create Campaign) → BayEngage (Send Campaign) → CRM Update
+
+**BayEngage Endpoints**: `/contacts`, `/campaigns`, `/events`
+**Optional AI Extension**: AI-powered order confirmation personalization and cross-sell recommendations
+
+**File**: `examples/order-confirmation.json`
+
+---
+
+#### Review Request
+**Description**: Automated review request campaigns with personalized messaging and incentive offers.
+
+**Trigger**: BayEngage Trigger (order.updated) → Filter (delivered status)
+**Example Node Sequence**: 
+- BayEngage Trigger → Wait (3 days) → BayEngage (Get Contact) → BayEngage (Create Campaign) → BayEngage (Send Campaign) → Review Platform Integration
+
+**BayEngage Endpoints**: `/contacts`, `/campaigns`, `/events`
+**Optional AI Extension**: AI-powered review request timing optimization and personalized incentive offers
+
+**File**: `examples/review-request.json`
+
+---
+
+### 5️⃣ Data-Driven & Cross-Channel Campaigns
+
+#### Churn Prediction Alert (AI-powered)
+**Description**: AI-powered churn prediction system that identifies at-risk customers and triggers retention campaigns.
+
+**Trigger**: Schedule Trigger (daily)
+**Example Node Sequence**: 
+- Schedule Trigger → BayEngage (List Contacts) → AI Model (Churn Prediction) → Filter (high risk) → BayEngage (Create Campaign) → BayEngage (Send Campaign) → CRM Alert
+
+**BayEngage Endpoints**: `/contacts`, `/campaigns`, `/events`
+**Optional AI Extension**: Machine learning model for churn prediction using engagement data, purchase history, and behavioral patterns
+
+**File**: `examples/churn-prediction-alert.json`
+
+---
+
+#### Multi-Channel Sync (Email + SMS)
+**Description**: Coordinated multi-channel campaigns that sync email and SMS messaging for maximum reach and engagement.
+
+**Trigger**: BayEngage Trigger (contact.created)
+**Example Node Sequence**: 
+- BayEngage Trigger → BayEngage (Create Campaign) → BayEngage (Send Campaign) → SMS Service (Send SMS) → Analytics Aggregation
+
+**BayEngage Endpoints**: `/contacts`, `/campaigns`
+**Optional AI Extension**: AI-powered channel optimization and message personalization across channels
+
+**File**: `examples/multi-channel-sync.json`
+
+---
+
+### 6️⃣ Operations, Analytics & Reporting
+
+#### Campaign Performance Dashboard
+**Description**: Automated campaign performance monitoring and dashboard updates with real-time metrics and insights.
+
+**Trigger**: Schedule Trigger (hourly)
+**Example Node Sequence**: 
+- Schedule Trigger → BayEngage (List Campaigns) → BayEngage (Get Reports) → Data Transformation → Dashboard Update → Slack Notification
+
+**BayEngage Endpoints**: `/campaigns`, `/campaigns/{id}/reports`
+**Optional AI Extension**: AI-powered performance insights and optimization recommendations
+
+**File**: `examples/campaign-performance-dashboard.json`
+
+---
+
+#### Monthly KPI Summary
+**Description**: Automated monthly KPI reporting with performance summaries, trends analysis, and actionable insights.
+
+**Trigger**: Schedule Trigger (monthly)
+**Example Node Sequence**: 
+- Schedule Trigger → BayEngage (Get Reports) → Data Aggregation → Report Generation → Email Distribution → Slack Notification
+
+**BayEngage Endpoints**: `/campaigns`, `/campaigns/{id}/reports`
+**Optional AI Extension**: AI-powered trend analysis and predictive insights
+
+**File**: `examples/monthly-kpi-summary.json`
+
+---
+
+### 7️⃣ Advanced AI-Powered Concepts
+
+#### Automated Campaign Creation Pipeline
+**Description**: End-to-end automated campaign creation using AI to generate content, optimize timing, and execute campaigns without manual intervention.
+
+**Trigger**: Schedule Trigger or Manual
+**Example Node Sequence**: 
+- Trigger → OpenAI (Generate Content) → BayEngage (Create Template) → BayEngage (Create Campaign) → AI Optimization → BayEngage (Send Campaign) → Performance Monitoring
+
+**BayEngage Endpoints**: `/templates`, `/campaigns`
+**AI Extension**: OpenAI GPT integration for content generation, subject line optimization, and campaign strategy development
+
+**File**: `examples/ai-campaign-creation.json`
+
+---
+
+#### AI-Segment Generator
+**Description**: AI-powered dynamic segment creation based on user behavior analysis, engagement patterns, and predictive modeling.
+
+**Trigger**: Schedule Trigger (daily)
+**Example Node Sequence**: 
+- Schedule Trigger → BayEngage (List Contacts) → AI Analysis (Behavior Patterns) → BayEngage (Create List) → BayEngage (Add Contacts) → Campaign Automation
+
+**BayEngage Endpoints**: `/contacts`, `/lists`, `/campaigns`
+**AI Extension**: Machine learning models for behavioral analysis, predictive segmentation, and dynamic list management
+
+**File**: `examples/ai-segment-generator.json`
+
+---
+
+## Basic Examples
+
+Check out the basic example workflows in the `examples/` directory:
 
 - **`campaign-report-to-sheets.json`** - Export campaign reports to Google Sheets
 - **`contact-sync.json`** - Sync contacts between BayEngage and other platforms
@@ -200,6 +428,14 @@ Check out the example workflows in the `examples/` directory:
   ]
 }
 ```
+
+## Getting Started
+
+1. **Install the n8n-node-bayengage package** in your n8n instance
+2. **Configure BayEngage API credentials** in n8n
+3. **Import the workflow examples** from the `examples/` directory
+4. **Customize the workflows** to match your specific use cases
+5. **Test and deploy** your automated marketing campaigns
 
 ## Resources
 
@@ -228,5 +464,3 @@ For additional help:
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
-
-
