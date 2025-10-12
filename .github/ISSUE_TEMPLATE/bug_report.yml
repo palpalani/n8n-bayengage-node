@@ -1,0 +1,157 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Tell us what happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened
+      placeholder: What actually happened?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: resource
+    attributes:
+      label: Which resource is affected?
+      options:
+        - Contact
+        - List
+        - Campaign
+        - Template
+        - Event
+        - Trigger Node
+        - Credentials
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operation
+    attributes:
+      label: Which operation is affected?
+      options:
+        - Create
+        - Get
+        - List
+        - Update
+        - Delete
+        - Upsert
+        - Send
+        - Track
+        - Other
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Package Version
+      description: Which version of n8n-nodes-bayengage are you using?
+      placeholder: e.g., 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: n8n-version
+    attributes:
+      label: n8n Version
+      description: Which version of n8n are you using?
+      placeholder: e.g., 1.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - n8n Cloud
+        - Self-hosted (Docker)
+        - Self-hosted (npm)
+        - Self-hosted (Desktop)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js Version
+      description: Which version of Node.js are you using?
+      placeholder: e.g., 20.15.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-log
+    attributes:
+      label: Error Messages / Logs
+      description: Paste any error messages or relevant logs
+      render: shell
+      placeholder: Paste error messages here
+
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Workflow Configuration
+      description: If possible, share your workflow JSON (remove sensitive data)
+      render: json
+      placeholder: Paste workflow JSON here
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+      placeholder: Any additional information that might help
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to ensure this bug hasn't been reported
+          required: true
+        - label: I have removed any sensitive information from my report
+          required: true
+        - label: I can reproduce this issue consistently
+          required: false

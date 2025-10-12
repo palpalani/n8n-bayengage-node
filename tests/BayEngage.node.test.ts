@@ -146,7 +146,7 @@ describe('BayEngage Node', () => {
         (option: any) => option.value === 'upsert'
       );
       expect(upsertOption).toBeDefined();
-      expect(upsertOption.name).toBe('Upsert');
+      expect(upsertOption.name).toBe('Create or Update');
     });
   });
 

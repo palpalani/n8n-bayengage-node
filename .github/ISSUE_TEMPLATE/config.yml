@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/bayengage/n8n-nodes-bayengage/blob/main/README.md
+    about: Read the documentation
+  - name: 💬 n8n Community Forum
+    url: https://community.n8n.io
+    about: Ask questions and discuss with the n8n community
+  - name: 📧 BayEngage Support
+    url: mailto:support@bayengage.com
+    about: Get help from BayEngage support team
+  - name: 🔧 BayEngage API Documentation
+    url: https://intercom.help/targetbay-bayengage/en/collections/11772762-api
+    about: Official BayEngage API documentation
