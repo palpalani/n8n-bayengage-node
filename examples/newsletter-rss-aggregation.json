@@ -1,0 +1,389 @@
+{
+  "name": "Newsletter RSS Aggregation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Weekly Newsletter Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.feedburner.com/techcrunch/startups",
+        "options": {
+          "maxResults": 10
+        }
+      },
+      "id": "rss-techcrunch",
+      "name": "RSS - TechCrunch",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.feedburner.com/oreilly/radar",
+        "options": {
+          "maxResults": 10
+        }
+      },
+      "id": "rss-oreilly",
+      "name": "RSS - O'Reilly Radar",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.feedburner.com/venturebeat/SZYF",
+        "options": {
+          "maxResults": 10
+        }
+      },
+      "id": "rss-venturebeat",
+      "name": "RSS - VentureBeat",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Aggregate and process RSS feed content\nconst techcrunch = items[0].json || [];\nconst oreilly = items[1].json || [];\nconst venturebeat = items[2].json || [];\n\n// Combine all articles\nconst allArticles = [...techcrunch, ...oreilly, ...venturebeat];\n\n// Sort by publication date (newest first)\nallArticles.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));\n\n// Take top 5 articles\nconst topArticles = allArticles.slice(0, 5);\n\n// Format articles for newsletter\nconst formattedArticles = topArticles.map((article, index) => {\n  const source = article.link.includes('techcrunch') ? 'TechCrunch' :\n                 article.link.includes('oreilly') ? 'O\\'Reilly' :\n                 article.link.includes('venturebeat') ? 'VentureBeat' : 'Unknown';\n  \n  return {\n    title: article.title,\n    link: article.link,\n    description: article.contentSnippet || article.description || '',\n    pubDate: new Date(article.pubDate).toLocaleDateString(),\n    source: source\n  };\n});\n\nreturn [{\n  json: {\n    newsletter_date: new Date().toLocaleDateString(),\n    articles: formattedArticles,\n    total_articles: formattedArticles.length\n  }\n}];"
+      },
+      "id": "aggregate-content",
+      "name": "Aggregate Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-3.5-turbo",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a newsletter editor. Create a compelling newsletter introduction and summary for the provided articles. Keep it engaging and professional."
+            },
+            {
+              "role": "user",
+              "content": "Create a newsletter introduction and summary for these articles: {{ JSON.stringify($json.articles) }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 500
+        }
+      },
+      "id": "ai-newsletter-intro",
+      "name": "AI Newsletter Introduction",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate HTML newsletter content\nconst data = items[0].json;\nconst aiIntro = items[1].json.choices[0].message.content;\n\nconst articles = data.articles;\n\nlet articlesHtml = '';\narticles.forEach((article, index) => {\n  articlesHtml += `\n    <div style=\"margin-bottom: 30px; padding: 20px; border-left: 4px solid #007bff; background-color: #f8f9fa;\">\n      <h3 style=\"margin-top: 0; color: #333;\">${article.title}</h3>\n      <p style=\"color: #666; font-size: 14px; margin: 5px 0;\">Source: ${article.source} | ${article.pubDate}</p>\n      <p style=\"line-height: 1.6;\">${article.description}</p>\n      <a href=\"${article.link}\" style=\"color: #007bff; text-decoration: none; font-weight: bold;\">Read More →</a>\n    </div>\n  `;\n});\n\nconst htmlContent = `\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Weekly Tech Newsletter - ${data.newsletter_date}</title>\n    <style>\n        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n        .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n        .header { background-color: #007bff; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }\n        .content { background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n        .footer { text-align: center; margin-top: 30px; padding: 20px; color: #666; font-size: 14px; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>📰 Weekly Tech Newsletter</h1>\n            <p>${data.newsletter_date}</p>\n        </div>\n        <div class=\"content\">\n            <div style=\"background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 30px;\">\n                <h2 style=\"margin-top: 0; color: #1976d2;\">This Week's Highlights</h2>\n                <p>${aiIntro}</p>\n            </div>\n            ${articlesHtml}\n        </div>\n        <div class=\"footer\">\n            <p>Thanks for reading! This newsletter is curated from top tech sources.</p>\n            <p><a href=\"#\" style=\"color: #007bff;\">Unsubscribe</a> | <a href=\"#\" style=\"color: #007bff;\">Update Preferences</a></p>\n        </div>\n    </div>\n</body>\n</html>\n`;\n\nreturn [{\n  json: {\n    newsletter_date: data.newsletter_date,\n    subject: `Weekly Tech Newsletter - ${data.newsletter_date}`,\n    html_content: htmlContent,\n    article_count: data.total_articles\n  }\n}];"
+      },
+      "id": "generate-newsletter-html",
+      "name": "Generate Newsletter HTML",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Weekly Tech Newsletter - {{ $json.newsletter_date }}",
+        "templateContent": "={{ $json.html_content }}"
+      },
+      "id": "create-newsletter-template",
+      "name": "Create Newsletter Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Weekly Tech Newsletter - {{ $json.newsletter_date }}",
+        "campaignSubject": "={{ $json.subject }}",
+        "campaignContent": "={{ $json.html_content }}",
+        "recipientList": "newsletter-subscribers"
+      },
+      "id": "create-newsletter-campaign",
+      "name": "Create Newsletter Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-newsletter",
+      "name": "Send Newsletter",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1780, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "Weekly Newsletter Sent: {{ $json.article_count }} articles",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*Weekly Tech Newsletter Sent*\n\n*Date:* {{ $json.newsletter_date }}\n*Articles:* {{ $json.article_count }}\n*Campaign ID:* {{ $json.campaign_id }}\n*Subject:* {{ $json.subject }}\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2000, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "Newsletter Log",
+        "columnToMatchOn": "Newsletter Date",
+        "valueToMatchOn": "={{ $json.newsletter_date }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Newsletter Date",
+              "fieldValue": "={{ $json.newsletter_date }}"
+            },
+            {
+              "column": "Campaign ID",
+              "fieldValue": "={{ $json.campaign_id }}"
+            },
+            {
+              "column": "Article Count",
+              "fieldValue": "={{ $json.article_count }}"
+            },
+            {
+              "column": "Subject",
+              "fieldValue": "={{ $json.subject }}"
+            },
+            {
+              "column": "Sent Date",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-to-sheets",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2220, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "rss-techcrunch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "rss-oreilly",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "rss-venturebeat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "rss-techcrunch": {
+      "main": [
+        [
+          {
+            "node": "aggregate-content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "rss-oreilly": {
+      "main": [
+        [
+          {
+            "node": "aggregate-content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "rss-venturebeat": {
+      "main": [
+        [
+          {
+            "node": "aggregate-content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "aggregate-content": {
+      "main": [
+        [
+          {
+            "node": "ai-newsletter-intro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai-newsletter-intro": {
+      "main": [
+        [
+          {
+            "node": "generate-newsletter-html",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-newsletter-html": {
+      "main": [
+        [
+          {
+            "node": "create-newsletter-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-newsletter-template": {
+      "main": [
+        [
+          {
+            "node": "create-newsletter-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-newsletter-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-newsletter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-newsletter": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slack-notification": {
+      "main": [
+        [
+          {
+            "node": "log-to-sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["newsletter", "rss", "content", "ai"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

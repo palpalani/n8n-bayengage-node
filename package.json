@@ -1,19 +1,23 @@
 {
-  "name": "n8n-nodes-<...>",
+  "name": "n8n-nodes-bayengage",
   "version": "0.1.0",
-  "description": "",
+  "description": "n8n community node for BayEngage email marketing platform",
   "keywords": [
-    "n8n-community-node-package"
+    "n8n-community-node-package",
+    "bayengage",
+    "email-marketing",
+    "automation",
+    "n8n"
   ],
   "license": "MIT",
-  "homepage": "",
+  "homepage": "https://github.com/bayengage/n8n-nodes-bayengage",
   "author": {
-    "name": "",
-    "email": ""
+    "name": "BayEngage",
+    "email": "support@bayengage.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/<...>/n8n-nodes-<...>.git"
+    "url": "https://github.com/bayengage/n8n-nodes-bayengage.git"
   },
   "engines": {
     "node": ">=20.15"
@@ -25,7 +29,10 @@
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials package.json",
     "lintfix": "eslint nodes credentials package.json --fix",
-    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes credentials package.json"
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "prepublishOnly": "npm run build && eslint -c eslint.config.prepublish.js nodes credentials package.json"
   },
   "files": [
     "dist"
@@ -33,21 +40,27 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/ExampleCredentialsApi.credentials.js",
-      "dist/credentials/HttpBinApi.credentials.js"
+      "dist/credentials/BayEngageApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/ExampleNode/ExampleNode.node.js",
-      "dist/nodes/HttpBin/HttpBin.node.js"
+      "dist/nodes/BayEngage/BayEngage.node.js",
+      "dist/nodes/BayEngageTrigger/BayEngageTrigger.node.js"
     ]
   },
   "devDependencies": {
-    "@typescript-eslint/parser": "~8.32.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-n8n-nodes-base": "^1.16.3",
-    "gulp": "^5.0.0",
-    "prettier": "^3.5.3",
-    "typescript": "^5.8.2"
+    "@eslint/js": "^9.37.0",
+    "@types/node": "^24.7.2",
+    "@typescript-eslint/parser": "~8.46.0",
+    "@vitest/ui": "^1.0.0",
+    "eslint": "^9.37.0",
+    "eslint-plugin-json": "^4.0.1",
+    "eslint-plugin-n8n-nodes-base": "^1.16.4",
+    "globals": "^16.4.0",
+    "gulp": "^5.0.1",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^1.0.0"
   },
   "peerDependencies": {
     "n8n-workflow": "*"

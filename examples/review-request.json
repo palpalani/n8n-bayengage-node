@@ -1,0 +1,386 @@
+{
+  "name": "Review Request Campaign",
+  "nodes": [
+    {
+      "parameters": {
+        "eventType": "order.updated",
+        "verifySignature": false
+      },
+      "id": "bayengage-trigger",
+      "name": "Order Updated Trigger",
+      "type": "n8n-nodes-bayengage.bayEngageTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "review-request-trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.data.order_status }}",
+              "rightValue": "delivered",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-delivered-orders",
+      "name": "Filter Delivered Orders",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "days"
+      },
+      "id": "wait-3-days",
+      "name": "Wait 3 Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "get",
+        "email": "={{ $json.data.customer_email }}"
+      },
+      "id": "get-customer-contact",
+      "name": "Get Customer Contact",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate personalized review request content\nconst orderData = items[0].json.data;\nconst contactData = items[1].json.data;\n\n// Calculate days since delivery\nconst deliveryDate = new Date(orderData.delivery_date || orderData.updated_at);\nconst currentDate = new Date();\nconst daysSinceDelivery = Math.floor((currentDate - deliveryDate) / (1000 * 60 * 60 * 24));\n\n// Generate product-specific review prompts\nconst productReviews = orderData.order_items.map(item => {\n  const reviewPrompt = item.category === 'electronics' ? \n    'How is the performance and quality?' :\n    item.category === 'clothing' ? \n    'How does the fit and comfort feel?' :\n    item.category === 'books' ? \n    'What did you think of the content?' :\n    'How satisfied are you with your purchase?';\n  \n  return {\n    name: item.name,\n    sku: item.sku,\n    category: item.category,\n    review_prompt: reviewPrompt,\n    review_url: `https://example.com/reviews/${item.sku}`\n  };\n});\n\n// Generate incentive based on order value\nconst orderValue = orderData.order_items.reduce((sum, item) => sum + (item.price * item.quantity), 0);\nlet incentive = '';\nif (orderValue > 100) {\n  incentive = 'Get 15% off your next order with code REVIEW15';\n} else if (orderValue > 50) {\n  incentive = 'Get 10% off your next order with code REVIEW10';\n} else {\n  incentive = 'Get 5% off your next order with code REVIEW5';\n}\n\n// Generate review request HTML\nconst productReviewsHtml = productReviews.map(product => `\n  <div style=\"border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9;\">\n    <h4 style=\"margin: 0 0 10px 0; color: #333;\">${product.name}</h4>\n    <p style=\"margin: 0 0 10px 0; color: #666;\">${product.review_prompt}</p>\n    <a href=\"${product.review_url}\" style=\"background-color: #007bff; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; font-size: 14px;\">Write Review</a>\n  </div>\n`).join('');\n\nreturn [{\n  json: {\n    order_id: orderData.order_id,\n    customer_name: contactData.first_name + ' ' + contactData.last_name,\n    customer_email: orderData.customer_email,\n    delivery_date: deliveryDate.toLocaleDateString(),\n    days_since_delivery: daysSinceDelivery,\n    order_items: orderData.order_items,\n    product_reviews: productReviews,\n    product_reviews_html: productReviewsHtml,\n    incentive: incentive,\n    order_value: orderValue.toFixed(2),\n    review_deadline: new Date(currentDate.getTime() + (7 * 24 * 60 * 60 * 1000)).toLocaleDateString()\n  }\n}];"
+      },
+      "id": "generate-review-content",
+      "name": "Generate Review Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Review Request - {{ $json.order_id }}",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>How was your experience?</title>\n    <style>\n        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n        .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n        .header { background-color: #6f42c1; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }\n        .content { background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n        .incentive-box { background-color: #fff3cd; padding: 20px; margin: 20px 0; border-left: 4px solid #ffc107; border-radius: 5px; }\n        .product-review { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }\n        .cta-button { display: inline-block; background-color: #6f42c1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 10px 5px; }\n        .footer { text-align: center; margin-top: 30px; padding: 20px; color: #666; font-size: 14px; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>⭐ How was your experience?</h1>\n            <p>Hi {{ $json.customer_name }}, we'd love to hear your thoughts!</p>\n        </div>\n        <div class=\"content\">\n            <p>Your order #{{ $json.order_id }} was delivered {{ $json.days_since_delivery }} days ago, and we hope you're enjoying your purchase!</p>\n            \n            <div class=\"incentive-box\">\n                <h3>🎁 Special Thank You</h3>\n                <p>{{ $json.incentive }}</p>\n                <p><small>Valid for 30 days after leaving your review</small></p>\n            </div>\n            \n            <h3>Please review your items:</h3>\n            {{ $json.product_reviews_html }}\n            \n            <div style=\"background-color: #e3f2fd; padding: 20px; margin: 20px 0; border-radius: 8px;\">\n                <h3>💬 Why your review matters:</h3>\n                <ul>\n                    <li>Help other customers make informed decisions</li>\n                    <li>Share your experience with our community</li>\n                    <li>Help us improve our products and services</li>\n                    <li>Earn rewards for your feedback</li>\n                </ul>\n            </div>\n            \n            <div style=\"text-align: center; margin: 30px 0;\">\n                <a href=\"https://example.com/reviews/order/{{ $json.order_id }}\" class=\"cta-button\">Review All Items</a>\n                <a href=\"https://example.com/account/orders\" class=\"cta-button\">View Order Details</a>\n            </div>\n            \n            <div style=\"background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 5px; text-align: center;\">\n                <p><strong>Review Deadline:</strong> {{ $json.review_deadline }}</p>\n                <p><small>Reviews help us maintain quality and help other customers</small></p>\n            </div>\n            \n            <p>Thank you for being a valued customer!</p>\n            <p>Best regards,<br>The Customer Experience Team</p>\n        </div>\n        <div class=\"footer\">\n            <p>Questions about your order? Contact us at support@example.com</p>\n            <p><a href=\"#\" style=\"color: #6f42c1;\">Unsubscribe</a> | <a href=\"#\" style=\"color: #6f42c1;\">Update Preferences</a></p>\n        </div>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-review-template",
+      "name": "Create Review Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Review Request - {{ $json.order_id }} - {{ $json.customer_name }}",
+        "campaignSubject": "How was your order #{{ $json.order_id }}, {{ $json.customer_name }}? ⭐",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "review-request-list"
+      },
+      "id": "create-review-campaign",
+      "name": "Create Review Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-review-request",
+      "name": "Send Review Request",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1780, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#reviews",
+        "text": "Review Request Sent: Order #{{ $json.order_id }}",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*⭐ Review Request Sent*\n\n*Order ID:* {{ $json.order_id }}\n*Customer:* {{ $json.customer_name }}\n*Email:* {{ $json.customer_email }}\n*Order Value:* ${{ $json.order_value }}\n*Days Since Delivery:* {{ $json.days_since_delivery }}\n*Campaign ID:* {{ $json.campaign_id }}\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2000, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "Review Requests",
+        "columnToMatchOn": "Order ID",
+        "valueToMatchOn": "={{ $json.order_id }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Order ID",
+              "fieldValue": "={{ $json.order_id }}"
+            },
+            {
+              "column": "Customer Name",
+              "fieldValue": "={{ $json.customer_name }}"
+            },
+            {
+              "column": "Customer Email",
+              "fieldValue": "={{ $json.customer_email }}"
+            },
+            {
+              "column": "Order Value",
+              "fieldValue": "={{ $json.order_value }}"
+            },
+            {
+              "column": "Days Since Delivery",
+              "fieldValue": "={{ $json.days_since_delivery }}"
+            },
+            {
+              "column": "Campaign ID",
+              "fieldValue": "={{ $json.campaign_id }}"
+            },
+            {
+              "column": "Sent Date",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-review-request",
+      "name": "Log Review Request",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2220, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "track",
+        "eventName": "review_request_sent",
+        "eventProperties": {
+          "properties": [
+            {
+              "name": "order_id",
+              "value": "={{ $json.order_id }}"
+            },
+            {
+              "name": "customer_email",
+              "value": "={{ $json.customer_email }}"
+            },
+            {
+              "name": "order_value",
+              "value": "={{ $json.order_value }}"
+            },
+            {
+              "name": "days_since_delivery",
+              "value": "={{ $json.days_since_delivery }}"
+            }
+          ]
+        }
+      },
+      "id": "track-review-event",
+      "name": "Track Review Event",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2440, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "bayengage-trigger": {
+      "main": [
+        [
+          {
+            "node": "filter-delivered-orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-delivered-orders": {
+      "main": [
+        [
+          {
+            "node": "wait-3-days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait-3-days": {
+      "main": [
+        [
+          {
+            "node": "get-customer-contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-customer-contact": {
+      "main": [
+        [
+          {
+            "node": "generate-review-content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-review-content": {
+      "main": [
+        [
+          {
+            "node": "create-review-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-review-template": {
+      "main": [
+        [
+          {
+            "node": "create-review-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-review-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-review-request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-review-request": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slack-notification": {
+      "main": [
+        [
+          {
+            "node": "log-review-request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log-review-request": {
+      "main": [
+        [
+          {
+            "node": "track-review-event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["review", "request", "transactional", "feedback"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

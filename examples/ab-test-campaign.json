@@ -1,0 +1,494 @@
+{
+  "name": "A/B Test Campaign",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Weekly A/B Test Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "list",
+        "operation": "list",
+        "limit": 100
+      },
+      "id": "get-test-audience",
+      "name": "Get Test Audience",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Split audience into two groups for A/B testing\nconst audience = items[0].json.data.contacts || [];\nconst totalContacts = audience.length;\nconst splitPoint = Math.floor(totalContacts / 2);\n\nconst groupA = audience.slice(0, splitPoint);\nconst groupB = audience.slice(splitPoint);\n\nreturn [\n  {\n    json: {\n      group: 'A',\n      contacts: groupA,\n      count: groupA.length\n    }\n  },\n  {\n    json: {\n      group: 'B',\n      contacts: groupB,\n      count: groupB.length\n    }\n  }\n];"
+      },
+      "id": "split-audience",
+      "name": "Split Audience for A/B Test",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "A/B Test - Variant A",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Special Offer - Variant A</title>\n</head>\n<body>\n    <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n        <h1 style=\"color: #007bff;\">🎉 Special Offer Inside!</h1>\n        <p>Hi there!</p>\n        <p>We have an amazing offer just for you. Don't miss out on this limited-time deal!</p>\n        <div style=\"background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px;\">\n            <h2>Get 20% OFF Everything!</h2>\n            <p>Use code <strong>SAVE20</strong> at checkout</p>\n            <p><small>Valid until end of month</small></p>\n        </div>\n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"https://example.com/shop\" style=\"background-color: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;\">Shop Now</a>\n        </div>\n        <p>Best regards,<br>The Marketing Team</p>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-template-variant-a",
+      "name": "Create Template - Variant A",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [900, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "A/B Test - Variant B",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Limited Time Offer - Variant B</title>\n</head>\n<body>\n    <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n        <h1 style=\"color: #28a745;\">⚡ Flash Sale - 24 Hours Only!</h1>\n        <p>Hello!</p>\n        <p>This is your last chance to grab this incredible deal. Act fast before it's gone!</p>\n        <div style=\"background-color: #fff3cd; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #ffc107;\">\n            <h2>🔥 30% OFF Everything!</h2>\n            <p>Use code <strong>FLASH30</strong> at checkout</p>\n            <p><small>Expires in 24 hours</small></p>\n        </div>\n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"https://example.com/shop\" style=\"background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;\">Shop Now</a>\n        </div>\n        <p>Best regards,<br>The Marketing Team</p>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-template-variant-b",
+      "name": "Create Template - Variant B",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [900, 400],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "A/B Test - Variant A - {{ new Date().toISOString().split('T')[0] }}",
+        "campaignSubject": "🎉 Special Offer Inside!",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "ab-test-group-a"
+      },
+      "id": "create-campaign-variant-a",
+      "name": "Create Campaign - Variant A",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1120, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "A/B Test - Variant B - {{ new Date().toISOString().split('T')[0] }}",
+        "campaignSubject": "⚡ Flash Sale - 24 Hours Only!",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "ab-test-group-b"
+      },
+      "id": "create-campaign-variant-b",
+      "name": "Create Campaign - Variant B",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1120, 400],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-campaign-variant-a",
+      "name": "Send Campaign - Variant A",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-campaign-variant-b",
+      "name": "Send Campaign - Variant B",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 400],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 24,
+        "unit": "hours"
+      },
+      "id": "wait-24-hours",
+      "name": "Wait 24 Hours",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getReports",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "get-reports-variant-a",
+      "name": "Get Reports - Variant A",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1780, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getReports",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "get-reports-variant-b",
+      "name": "Get Reports - Variant B",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1780, 400],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Analyze A/B test results and determine winner\nconst variantA = items[0].json.data;\nconst variantB = items[1].json.data;\n\nconst openRateA = parseFloat(variantA.open_rate) || 0;\nconst clickRateA = parseFloat(variantA.click_rate) || 0;\nconst openRateB = parseFloat(variantB.open_rate) || 0;\nconst clickRateB = parseFloat(variantB.click_rate) || 0;\n\nconst winner = openRateA > openRateB ? 'A' : 'B';\nconst improvement = winner === 'A' ? \n  ((openRateA - openRateB) / openRateB * 100).toFixed(2) : \n  ((openRateB - openRateA) / openRateA * 100).toFixed(2);\n\nreturn [{\n  json: {\n    test_date: new Date().toISOString().split('T')[0],\n    variant_a: {\n      campaign_id: variantA.campaign_id,\n      sent: variantA.sent,\n      opens: variantA.opens,\n      clicks: variantA.clicks,\n      open_rate: variantA.open_rate,\n      click_rate: variantA.click_rate\n    },\n    variant_b: {\n      campaign_id: variantB.campaign_id,\n      sent: variantB.sent,\n      opens: variantB.opens,\n      clicks: variantB.clicks,\n      open_rate: variantB.open_rate,\n      click_rate: variantB.click_rate\n    },\n    winner: winner,\n    improvement_percentage: improvement,\n    recommendation: winner === 'A' ? \n      'Variant A performed better. Consider using this approach for future campaigns.' :\n      'Variant B performed better. Consider using this approach for future campaigns.'\n  }\n}];"
+      },
+      "id": "analyze-results",
+      "name": "Analyze A/B Test Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "A/B Test Results",
+        "columnToMatchOn": "Test Date",
+        "valueToMatchOn": "={{ $json.test_date }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Test Date",
+              "fieldValue": "={{ $json.test_date }}"
+            },
+            {
+              "column": "Variant A Campaign ID",
+              "fieldValue": "={{ $json.variant_a.campaign_id }}"
+            },
+            {
+              "column": "Variant A Open Rate",
+              "fieldValue": "={{ $json.variant_a.open_rate }}"
+            },
+            {
+              "column": "Variant A Click Rate",
+              "fieldValue": "={{ $json.variant_a.click_rate }}"
+            },
+            {
+              "column": "Variant B Campaign ID",
+              "fieldValue": "={{ $json.variant_b.campaign_id }}"
+            },
+            {
+              "column": "Variant B Open Rate",
+              "fieldValue": "={{ $json.variant_b.open_rate }}"
+            },
+            {
+              "column": "Variant B Click Rate",
+              "fieldValue": "={{ $json.variant_b.click_rate }}"
+            },
+            {
+              "column": "Winner",
+              "fieldValue": "={{ $json.winner }}"
+            },
+            {
+              "column": "Improvement %",
+              "fieldValue": "={{ $json.improvement_percentage }}%"
+            },
+            {
+              "column": "Recommendation",
+              "fieldValue": "={{ $json.recommendation }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-results-to-sheets",
+      "name": "Log Results to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2220, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "A/B Test Results: Variant {{ $json.winner }} wins!",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*A/B Test Results - {{ $json.test_date }}*\n\n*Winner:* Variant {{ $json.winner }}\n*Improvement:* {{ $json.improvement_percentage }}%\n\n*Variant A:*\n• Open Rate: {{ $json.variant_a.open_rate }}\n• Click Rate: {{ $json.variant_a.click_rate }}\n\n*Variant B:*\n• Open Rate: {{ $json.variant_b.open_rate }}\n• Click Rate: {{ $json.variant_b.click_rate }}\n\n*Recommendation:* {{ $json.recommendation }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2440, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "get-test-audience",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-test-audience": {
+      "main": [
+        [
+          {
+            "node": "split-audience",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "split-audience": {
+      "main": [
+        [
+          {
+            "node": "create-template-variant-a",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "create-template-variant-b",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-template-variant-a": {
+      "main": [
+        [
+          {
+            "node": "create-campaign-variant-a",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-template-variant-b": {
+      "main": [
+        [
+          {
+            "node": "create-campaign-variant-b",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-campaign-variant-a": {
+      "main": [
+        [
+          {
+            "node": "send-campaign-variant-a",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-campaign-variant-b": {
+      "main": [
+        [
+          {
+            "node": "send-campaign-variant-b",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-campaign-variant-a": {
+      "main": [
+        [
+          {
+            "node": "wait-24-hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-campaign-variant-b": {
+      "main": [
+        [
+          {
+            "node": "wait-24-hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait-24-hours": {
+      "main": [
+        [
+          {
+            "node": "get-reports-variant-a",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get-reports-variant-b",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-reports-variant-a": {
+      "main": [
+        [
+          {
+            "node": "analyze-results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-reports-variant-b": {
+      "main": [
+        [
+          {
+            "node": "analyze-results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "analyze-results": {
+      "main": [
+        [
+          {
+            "node": "log-results-to-sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log-results-to-sheets": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["ab-test", "optimization", "testing"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

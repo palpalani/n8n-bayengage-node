@@ -1,0 +1,105 @@
+{
+  "name": "BayEngage Webhook to Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "eventType": "all",
+        "verifySignature": false
+      },
+      "id": "bayengage-trigger",
+      "name": "BayEngage Webhook",
+      "type": "n8n-nodes-bayengage.bayEngageTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "bayengage-webhook"
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "New BayEngage Event: {{ $json.event_type }}",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*BayEngage Event Notification*\n\n*Event Type:* {{ $json.event_type }}\n*Timestamp:* {{ $json.timestamp }}\n*Contact ID:* {{ $json.contact_id || 'N/A' }}\n*Campaign ID:* {{ $json.campaign_id || 'N/A' }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.event_type }}",
+              "rightValue": "contact.created",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-contact-created",
+      "name": "Filter Contact Created",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [340, 300]
+    }
+  ],
+  "connections": {
+    "bayengage-trigger": {
+      "main": [
+        [
+          {
+            "node": "filter-contact-created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-contact-created": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,360 @@
+{
+  "name": "Welcome Series Campaign",
+  "nodes": [
+    {
+      "parameters": {
+        "eventType": "contact.created",
+        "verifySignature": false
+      },
+      "id": "bayengage-trigger",
+      "name": "New Contact Trigger",
+      "type": "n8n-nodes-bayengage.bayEngageTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "welcome-series-trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.data.signup_source }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-valid-signup",
+      "name": "Filter Valid Signup",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.data.signup_source }}",
+              "rightValue": "website",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "switch-signup-source",
+      "name": "Switch by Signup Source",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Welcome Series - Website",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Welcome to Our Community!</title>\n</head>\n<body>\n    <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n        <h1>Welcome {{ $json.data.first_name }}!</h1>\n        <p>Thank you for joining our community. We're excited to have you on board!</p>\n        <p>Here's what you can expect:</p>\n        <ul>\n            <li>Weekly tips and insights</li>\n            <li>Exclusive content and resources</li>\n            <li>Special offers just for subscribers</li>\n        </ul>\n        <p>Best regards,<br>The Team</p>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-welcome-template-website",
+      "name": "Create Welcome Template - Website",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [900, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Welcome Series - Social Media",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Welcome from Social Media!</title>\n</head>\n<body>\n    <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n        <h1>Hey {{ $json.data.first_name }}! 👋</h1>\n        <p>Thanks for following us on social media and joining our email list!</p>\n        <p>Since you found us on social, here are some exclusive social media tips:</p>\n        <ul>\n            <li>Follow us on all platforms for daily updates</li>\n            <li>Join our exclusive Facebook group</li>\n            <li>Get early access to new content</li>\n        </ul>\n        <p>Let's stay connected!<br>The Social Team</p>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-welcome-template-social",
+      "name": "Create Welcome Template - Social",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [900, 400],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Welcome Series - {{ $json.data.first_name }}",
+        "campaignSubject": "Welcome {{ $json.data.first_name }}! Let's get started",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "welcome-series-list"
+      },
+      "id": "create-welcome-campaign-website",
+      "name": "Create Welcome Campaign - Website",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1120, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Welcome Series - {{ $json.data.first_name }}",
+        "campaignSubject": "Hey {{ $json.data.first_name }}! Welcome from social! 🎉",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "welcome-series-list"
+      },
+      "id": "create-welcome-campaign-social",
+      "name": "Create Welcome Campaign - Social",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1120, 400],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-welcome-campaign-website",
+      "name": "Send Welcome Campaign - Website",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-welcome-campaign-social",
+      "name": "Send Welcome Campaign - Social",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 400],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "Welcome Series Sent: {{ $json.data.first_name }} ({{ $json.data.signup_source }})",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*Welcome Series Campaign Sent*\n\n*Contact:* {{ $json.data.first_name }} {{ $json.data.last_name }}\n*Email:* {{ $json.data.email }}\n*Signup Source:* {{ $json.data.signup_source }}\n*Campaign ID:* {{ $json.campaign_id }}\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification-website",
+      "name": "Slack Notification - Website",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1560, 200],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "Welcome Series Sent: {{ $json.data.first_name }} ({{ $json.data.signup_source }})",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*Welcome Series Campaign Sent*\n\n*Contact:* {{ $json.data.first_name }} {{ $json.data.last_name }}\n*Email:* {{ $json.data.email }}\n*Signup Source:* {{ $json.data.signup_source }}\n*Campaign ID:* {{ $json.campaign_id }}\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification-social",
+      "name": "Slack Notification - Social",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1560, 400],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "bayengage-trigger": {
+      "main": [
+        [
+          {
+            "node": "filter-valid-signup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-valid-signup": {
+      "main": [
+        [
+          {
+            "node": "switch-signup-source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "switch-signup-source": {
+      "main": [
+        [
+          {
+            "node": "create-welcome-template-website",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "create-welcome-template-social",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-welcome-template-website": {
+      "main": [
+        [
+          {
+            "node": "create-welcome-campaign-website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-welcome-template-social": {
+      "main": [
+        [
+          {
+            "node": "create-welcome-campaign-social",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-welcome-campaign-website": {
+      "main": [
+        [
+          {
+            "node": "send-welcome-campaign-website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-welcome-campaign-social": {
+      "main": [
+        [
+          {
+            "node": "send-welcome-campaign-social",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-welcome-campaign-website": {
+      "main": [
+        [
+          {
+            "node": "slack-notification-website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-welcome-campaign-social": {
+      "main": [
+        [
+          {
+            "node": "slack-notification-social",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["welcome", "onboarding", "lifecycle"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

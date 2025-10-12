@@ -1,0 +1,388 @@
+{
+  "name": "Dynamic Offer Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "eventType": "contact.updated",
+        "verifySignature": false
+      },
+      "id": "bayengage-trigger",
+      "name": "Contact Updated Trigger",
+      "type": "n8n-nodes-bayengage.bayEngageTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "dynamic-offer-trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.data.lifetime_value }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-has-purchase-history",
+      "name": "Filter Has Purchase History",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Analyze customer profile and generate personalized offers\nconst contactData = items[0].json.data;\nconst currentDate = new Date();\n\n// Calculate customer metrics\nconst lifetimeValue = contactData.lifetime_value || 0;\nconst orderCount = contactData.order_count || 0;\nconst lastOrderDate = contactData.last_order_date ? new Date(contactData.last_order_date) : null;\nconst daysSinceLastOrder = lastOrderDate ? Math.floor((currentDate - lastOrderDate) / (1000 * 60 * 60 * 24)) : 999;\nconst emailOpenRate = contactData.email_open_rate || 0;\nconst emailClickRate = contactData.email_click_rate || 0;\nconst customerTier = contactData.customer_tier || 'standard';\nconst interests = contactData.interests || [];\nconst location = contactData.location || 'unknown';\n\n// Calculate engagement score\nlet engagementScore = 100;\nif (daysSinceLastOrder > 90) engagementScore -= 40;\nelse if (daysSinceLastOrder > 30) engagementScore -= 20;\nelse if (daysSinceLastOrder > 7) engagementScore -= 10;\n\nif (emailOpenRate < 0.1) engagementScore -= 20;\nelse if (emailOpenRate < 0.2) engagementScore -= 10;\n\nif (emailClickRate < 0.02) engagementScore -= 15;\nelse if (emailClickRate < 0.05) engagementScore -= 8;\n\nengagementScore = Math.max(0, engagementScore);\n\n// Determine customer segment\nlet customerSegment = 'new';\nif (lifetimeValue >= 5000) customerSegment = 'vip';\nelse if (lifetimeValue >= 1000) customerSegment = 'high_value';\nelse if (lifetimeValue >= 200) customerSegment = 'regular';\nelse if (orderCount >= 3) customerSegment = 'frequent';\n\n// Generate personalized offers based on profile\nconst offers = [];\n\n// VIP offers\nif (customerSegment === 'vip') {\n  offers.push({\n    type: 'percentage',\n    value: 25,\n    code: 'VIP25',\n    description: 'Exclusive 25% off for VIP members',\n    min_order: 100,\n    max_discount: 500,\n    expires_days: 30,\n    priority: 1\n  });\n  offers.push({\n    type: 'free_shipping',\n    value: 0,\n    code: 'VIPSHIP',\n    description: 'Free express shipping on your next order',\n    min_order: 50,\n    expires_days: 14,\n    priority: 2\n  });\n}\n\n// High value customer offers\nelse if (customerSegment === 'high_value') {\n  offers.push({\n    type: 'percentage',\n    value: 20,\n    code: 'HIGH20',\n    description: 'Special 20% off for valued customers',\n    min_order: 75,\n    max_discount: 200,\n    expires_days: 21,\n    priority: 1\n  });\n  offers.push({\n    type: 'fixed',\n    value: 25,\n    code: 'SAVE25',\n    description: '$25 off your next order',\n    min_order: 100,\n    expires_days: 14,\n    priority: 2\n  });\n}\n\n// Regular customer offers\nelse if (customerSegment === 'regular') {\n  offers.push({\n    type: 'percentage',\n    value: 15,\n    code: 'REGULAR15',\n    description: '15% off your next purchase',\n    min_order: 50,\n    max_discount: 100,\n    expires_days: 14,\n    priority: 1\n  });\n  offers.push({\n    type: 'free_shipping',\n    value: 0,\n    code: 'FREESHIP',\n    description: 'Free shipping on orders over $75',\n    min_order: 75,\n    expires_days: 7,\n    priority: 2\n  });\n}\n\n// Frequent buyer offers\nelse if (customerSegment === 'frequent') {\n  offers.push({\n    type: 'percentage',\n    value: 10,\n    code: 'FREQUENT10',\n    description: '10% off for frequent buyers',\n    min_order: 30,\n    max_discount: 50,\n    expires_days: 10,\n    priority: 1\n  });\n}\n\n// Re-engagement offers for low engagement\nif (engagementScore < 30) {\n  offers.push({\n    type: 'percentage',\n    value: 30,\n    code: 'COMEBACK30',\n    description: 'Welcome back! 30% off your next order',\n    min_order: 25,\n    max_discount: 75,\n    expires_days: 7,\n    priority: 1\n  });\n}\n\n// New customer offers\nelse if (customerSegment === 'new') {\n  offers.push({\n    type: 'percentage',\n    value: 20,\n    code: 'WELCOME20',\n    description: 'Welcome! 20% off your first order',\n    min_order: 25,\n    max_discount: 50,\n    expires_days: 14,\n    priority: 1\n  });\n  offers.push({\n    type: 'free_shipping',\n    value: 0,\n    code: 'NEWSHIP',\n    description: 'Free shipping on your first order',\n    min_order: 0,\n    expires_days: 7,\n    priority: 2\n  });\n}\n\n// Sort offers by priority\noffers.sort((a, b) => a.priority - b.priority);\n\n// Select the best offer\nconst selectedOffer = offers[0] || {\n  type: 'percentage',\n  value: 10,\n  code: 'DEFAULT10',\n  description: '10% off your next order',\n  min_order: 25,\n  max_discount: 25,\n  expires_days: 7,\n  priority: 1\n};\n\n// Calculate offer value\nconst offerValue = selectedOffer.type === 'percentage' ? \n  `Up to ${selectedOffer.value}% off` :\n  selectedOffer.type === 'fixed' ? \n  `$${selectedOffer.value} off` :\n  'Free shipping';\n\nreturn [{\n  json: {\n    contact_id: contactData.id,\n    first_name: contactData.first_name,\n    last_name: contactData.last_name,\n    email: contactData.email,\n    customer_segment: customerSegment,\n    engagement_score: engagementScore,\n    lifetime_value: lifetimeValue,\n    order_count: orderCount,\n    days_since_last_order: daysSinceLastOrder,\n    selected_offer: selectedOffer,\n    offer_value: offerValue,\n    all_offers: offers,\n    generated_at: currentDate.toISOString()\n  }\n}];"
+      },
+      "id": "generate-personalized-offers",
+      "name": "Generate Personalized Offers",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate personalized offer campaign content\nconst data = items[0].json;\nconst offer = data.selected_offer;\n\n// Generate subject line based on offer type and customer segment\nlet subjectLine;\nif (data.customer_segment === 'vip') {\n  subjectLine = `🎁 Exclusive VIP Offer: ${data.offer_value}, ${data.first_name}!`;\n} else if (data.customer_segment === 'high_value') {\n  subjectLine = `💎 Special Offer: ${data.offer_value} for you, ${data.first_name}!`;\n} else if (data.customer_segment === 'new') {\n  subjectLine = `🎉 Welcome ${data.first_name}! Get ${data.offer_value} on your first order!`;\n} else if (data.engagement_score < 30) {\n  subjectLine = `👋 We miss you, ${data.first_name}! ${data.offer_value} to welcome you back!`;\n} else {\n  subjectLine = `🎁 Special offer: ${data.offer_value} for ${data.first_name}!`;\n}\n\n// Generate HTML content\nconst htmlContent = `\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Special Offer for ${data.first_name}</title>\n    <style>\n        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; }\n        .container { max-width: 600px; margin: 0 auto; }\n        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }\n        .content { background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n        .offer-box { background-color: #fff3cd; padding: 25px; margin: 20px 0; border-left: 4px solid #ffc107; border-radius: 8px; text-align: center; }\n        .offer-code { font-size: 24px; font-weight: bold; color: #d63384; margin: 10px 0; }\n        .offer-details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-radius: 5px; }\n        .cta-button { display: inline-block; background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }\n        .footer { text-align: center; margin-top: 30px; padding: 20px; color: #666; font-size: 14px; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>🎁 Special Offer for ${data.first_name}!</h1>\n            <p>We've prepared something special just for you</p>\n        </div>\n        <div class=\"content\">\n            <div class=\"offer-box\">\n                <h2 style=\"margin: 0 0 10px 0; color: #d63384;\">${offer.description}</h2>\n                <div class=\"offer-code\">Code: ${offer.code}</div>\n                <p style=\"margin: 0; font-size: 18px; color: #333;\">${data.offer_value}</p>\n            </div>\n            \n            <div class=\"offer-details\">\n                <h3>📋 Offer Details:</h3>\n                <ul style=\"margin: 10px 0; padding-left: 20px;\">\n                    <li><strong>Minimum Order:</strong> $${offer.min_order}</li>\n                    ${offer.max_discount ? `<li><strong>Maximum Discount:</strong> $${offer.max_discount}</li>` : ''}\n                    <li><strong>Expires:</strong> ${offer.expires_days} days from now</li>\n                    <li><strong>Valid for:</strong> ${data.first_name} ${data.last_name}</li>\n                </ul>\n            </div>\n            \n            <div style=\"text-align: center; margin: 30px 0;\">\n                <a href=\"https://example.com/shop?code=${offer.code}\" class=\"cta-button\">Shop Now & Save</a>\n            </div>\n            \n            <div style=\"background-color: #e3f2fd; padding: 20px; margin: 20px 0; border-radius: 8px;\">\n                <h3>💡 Why this offer?</h3>\n                <p>Based on your shopping history and preferences, we've selected this offer specifically for you. ${data.customer_segment === 'vip' ? 'As a VIP customer, you get access to our best deals!' : data.customer_segment === 'high_value' ? 'We appreciate your loyalty and want to reward you!' : 'We want to make sure you get the best value for your money!'}</p>\n            </div>\n            \n            <div style=\"text-align: center; margin: 20px 0;\">\n                <a href=\"https://example.com/account\" class=\"cta-button\" style=\"background-color: #007bff;\">View My Account</a>\n            </div>\n        </div>\n        <div class=\"footer\">\n            <p>Questions about this offer? Contact us at support@example.com</p>\n            <p><a href=\"#\" style=\"color: #007bff;\">Unsubscribe</a> | <a href=\"#\" style=\"color: #007bff;\">Update Preferences</a></p>\n        </div>\n    </div>\n</body>\n</html>\n`;\n\nreturn [{\n  json: {\n    contact_id: data.contact_id,\n    first_name: data.first_name,\n    last_name: data.last_name,\n    email: data.email,\n    customer_segment: data.customer_segment,\n    engagement_score: data.engagement_score,\n    lifetime_value: data.lifetime_value,\n    selected_offer: data.selected_offer,\n    offer_value: data.offer_value,\n    subject_line: subjectLine,\n    html_content: htmlContent,\n    campaign_name: `Dynamic Offer - ${data.customer_segment} - ${data.first_name}`,\n    generated_at: data.generated_at\n  }\n}];"
+      },
+      "id": "generate-offer-content",
+      "name": "Generate Offer Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Dynamic Offer - {{ $json.customer_segment }} - {{ $json.first_name }}",
+        "templateContent": "={{ $json.html_content }}"
+      },
+      "id": "create-offer-template",
+      "name": "Create Offer Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "={{ $json.campaign_name }}",
+        "campaignSubject": "={{ $json.subject_line }}",
+        "campaignContent": "={{ $json.html_content }}",
+        "recipientList": "dynamic-offer-recipients"
+      },
+      "id": "create-offer-campaign",
+      "name": "Create Offer Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-offer-campaign",
+      "name": "Send Offer Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "Dynamic Offer Sent: {{ $json.first_name }} {{ $json.last_name }} - {{ $json.customer_segment }}",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*🎁 Dynamic Offer Sent*\n\n*Customer:* {{ $json.first_name }} {{ $json.last_name }}\n*Email:* {{ $json.email }}\n*Segment:* {{ $json.customer_segment.toUpperCase() }}\n*Engagement Score:* {{ $json.engagement_score }}/100\n*Lifetime Value:* ${{ $json.lifetime_value }}\n\n*Offer Details:*\n• Type: {{ $json.selected_offer.type }}\n• Value: {{ $json.offer_value }}\n• Code: {{ $json.selected_offer.code }}\n• Min Order: ${{ $json.selected_offer.min_order }}\n• Expires: {{ $json.selected_offer.expires_days }} days\n\n*Campaign ID:* {{ $json.campaign_id }}\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1780, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "Dynamic Offers",
+        "columnToMatchOn": "Contact ID",
+        "valueToMatchOn": "={{ $json.contact_id }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Contact ID",
+              "fieldValue": "={{ $json.contact_id }}"
+            },
+            {
+              "column": "Customer Name",
+              "fieldValue": "={{ $json.first_name }} {{ $json.last_name }}"
+            },
+            {
+              "column": "Email",
+              "fieldValue": "={{ $json.email }}"
+            },
+            {
+              "column": "Customer Segment",
+              "fieldValue": "={{ $json.customer_segment }}"
+            },
+            {
+              "column": "Engagement Score",
+              "fieldValue": "={{ $json.engagement_score }}"
+            },
+            {
+              "column": "Lifetime Value",
+              "fieldValue": "={{ $json.lifetime_value }}"
+            },
+            {
+              "column": "Offer Type",
+              "fieldValue": "={{ $json.selected_offer.type }}"
+            },
+            {
+              "column": "Offer Value",
+              "fieldValue": "={{ $json.offer_value }}"
+            },
+            {
+              "column": "Offer Code",
+              "fieldValue": "={{ $json.selected_offer.code }}"
+            },
+            {
+              "column": "Min Order",
+              "fieldValue": "={{ $json.selected_offer.min_order }}"
+            },
+            {
+              "column": "Expires Days",
+              "fieldValue": "={{ $json.selected_offer.expires_days }}"
+            },
+            {
+              "column": "Campaign ID",
+              "fieldValue": "={{ $json.campaign_id }}"
+            },
+            {
+              "column": "Generated At",
+              "fieldValue": "={{ $json.generated_at }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-dynamic-offer",
+      "name": "Log Dynamic Offer",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2000, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "track",
+        "eventName": "dynamic_offer_sent",
+        "eventProperties": {
+          "properties": [
+            {
+              "name": "contact_id",
+              "value": "={{ $json.contact_id }}"
+            },
+            {
+              "name": "customer_segment",
+              "value": "={{ $json.customer_segment }}"
+            },
+            {
+              "name": "engagement_score",
+              "value": "={{ $json.engagement_score }}"
+            },
+            {
+              "name": "lifetime_value",
+              "value": "={{ $json.lifetime_value }}"
+            },
+            {
+              "name": "offer_type",
+              "value": "={{ $json.selected_offer.type }}"
+            },
+            {
+              "name": "offer_code",
+              "value": "={{ $json.selected_offer.code }}"
+            }
+          ]
+        }
+      },
+      "id": "track-offer-event",
+      "name": "Track Offer Event",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2220, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "bayengage-trigger": {
+      "main": [
+        [
+          {
+            "node": "filter-has-purchase-history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-has-purchase-history": {
+      "main": [
+        [
+          {
+            "node": "generate-personalized-offers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-personalized-offers": {
+      "main": [
+        [
+          {
+            "node": "generate-offer-content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate-offer-content": {
+      "main": [
+        [
+          {
+            "node": "create-offer-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-offer-template": {
+      "main": [
+        [
+          {
+            "node": "create-offer-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-offer-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-offer-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-offer-campaign": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slack-notification": {
+      "main": [
+        [
+          {
+            "node": "log-dynamic-offer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log-dynamic-offer": {
+      "main": [
+        [
+          {
+            "node": "track-offer-event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["dynamic-offer", "personalization", "ai", "pricing"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,360 @@
+{
+  "name": "Abandoned Cart Recovery Campaign",
+  "nodes": [
+    {
+      "parameters": {
+        "eventType": "order.created",
+        "verifySignature": false
+      },
+      "id": "bayengage-trigger",
+      "name": "Order Created Trigger",
+      "type": "n8n-nodes-bayengage.bayEngageTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "abandoned-cart-trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.data.order_status }}",
+              "rightValue": "abandoned",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-abandoned-cart",
+      "name": "Filter Abandoned Cart",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "hours"
+      },
+      "id": "wait-1-hour",
+      "name": "Wait 1 Hour",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "get",
+        "email": "={{ $json.data.customer_email }}"
+      },
+      "id": "get-customer-contact",
+      "name": "Get Customer Contact",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Abandoned Cart - First Reminder",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Don't forget your items!</title>\n</head>\n<body>\n    <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n        <h1>Hi {{ $json.data.customer_first_name }}!</h1>\n        <p>We noticed you left some items in your cart. Don't worry, we've saved them for you!</p>\n        <div style=\"border: 1px solid #ddd; padding: 20px; margin: 20px 0;\">\n            <h3>Your Cart Items:</h3>\n            <ul>\n                <li>Item 1 - $29.99</li>\n                <li>Item 2 - $19.99</li>\n            </ul>\n            <p><strong>Total: $49.98</strong></p>\n        </div>\n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"{{ $json.data.cart_url }}\" style=\"background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;\">Complete Your Purchase</a>\n        </div>\n        <p>Questions? Just reply to this email!</p>\n        <p>Best regards,<br>The Team</p>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-first-reminder-template",
+      "name": "Create First Reminder Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Abandoned Cart - First Reminder - {{ $json.data.customer_first_name }}",
+        "campaignSubject": "Don't forget your items, {{ $json.data.customer_first_name }}!",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "abandoned-cart-list"
+      },
+      "id": "create-first-reminder-campaign",
+      "name": "Create First Reminder Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1340, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-first-reminder",
+      "name": "Send First Reminder",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [1560, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 24,
+        "unit": "hours"
+      },
+      "id": "wait-24-hours",
+      "name": "Wait 24 Hours",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "create",
+        "templateName": "Abandoned Cart - Second Reminder",
+        "templateContent": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Last chance - 10% off your order!</title>\n</head>\n<body>\n    <div style=\"max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;\">\n        <h1>Last chance, {{ $json.data.customer_first_name }}!</h1>\n        <p>Your items are still waiting for you, and we don't want you to miss out!</p>\n        <div style=\"background-color: #f8f9fa; padding: 20px; margin: 20px 0; border-left: 4px solid #28a745;\">\n            <h3>🎉 Special Offer: 10% OFF!</h3>\n            <p>Use code <strong>SAVE10</strong> at checkout for 10% off your order!</p>\n        </div>\n        <div style=\"border: 1px solid #ddd; padding: 20px; margin: 20px 0;\">\n            <h3>Your Cart Items:</h3>\n            <ul>\n                <li>Item 1 - $29.99</li>\n                <li>Item 2 - $19.99</li>\n            </ul>\n            <p><strong>Total: $49.98</strong><br><span style=\"color: #28a745;\">With 10% off: $44.98</span></p>\n        </div>\n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"{{ $json.data.cart_url }}\" style=\"background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;\">Complete Your Purchase Now</a>\n        </div>\n        <p><small>This offer expires in 24 hours.</small></p>\n        <p>Questions? Just reply to this email!</p>\n        <p>Best regards,<br>The Team</p>\n    </div>\n</body>\n</html>"
+      },
+      "id": "create-second-reminder-template",
+      "name": "Create Second Reminder Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2000, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "campaignName": "Abandoned Cart - Second Reminder - {{ $json.data.customer_first_name }}",
+        "campaignSubject": "Last chance! 10% off your order, {{ $json.data.customer_first_name }}",
+        "campaignContent": "={{ $json.template_content }}",
+        "recipientList": "abandoned-cart-list"
+      },
+      "id": "create-second-reminder-campaign",
+      "name": "Create Second Reminder Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2220, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.campaign_id }}"
+      },
+      "id": "send-second-reminder",
+      "name": "Send Second Reminder",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [2440, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#marketing",
+        "text": "Abandoned Cart Recovery: {{ $json.data.customer_first_name }} {{ $json.data.customer_last_name }}",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*Abandoned Cart Recovery Campaign*\n\n*Customer:* {{ $json.data.customer_first_name }} {{ $json.data.customer_last_name }}\n*Email:* {{ $json.data.customer_email }}\n*Order ID:* {{ $json.data.order_id }}\n*Cart Value:* ${{ $json.data.cart_total }}\n*Campaign ID:* {{ $json.campaign_id }}\n*Timestamp:* {{ new Date().toISOString() }}"
+            }
+          }
+        ]
+      },
+      "id": "slack-notification",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [2660, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "bayengage-trigger": {
+      "main": [
+        [
+          {
+            "node": "filter-abandoned-cart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filter-abandoned-cart": {
+      "main": [
+        [
+          {
+            "node": "wait-1-hour",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait-1-hour": {
+      "main": [
+        [
+          {
+            "node": "get-customer-contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get-customer-contact": {
+      "main": [
+        [
+          {
+            "node": "create-first-reminder-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-first-reminder-template": {
+      "main": [
+        [
+          {
+            "node": "create-first-reminder-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-first-reminder-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-first-reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-first-reminder": {
+      "main": [
+        [
+          {
+            "node": "wait-24-hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait-24-hours": {
+      "main": [
+        [
+          {
+            "node": "create-second-reminder-template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-second-reminder-template": {
+      "main": [
+        [
+          {
+            "node": "create-second-reminder-campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-second-reminder-campaign": {
+      "main": [
+        [
+          {
+            "node": "send-second-reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-second-reminder": {
+      "main": [
+        [
+          {
+            "node": "slack-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["abandoned-cart", "recovery", "ecommerce"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

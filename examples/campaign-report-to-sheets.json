@@ -1,0 +1,136 @@
+{
+  "name": "BayEngage Campaign Report to Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getReports",
+        "campaignId": "12345"
+      },
+      "id": "bayengage-get-reports",
+      "name": "Get Campaign Reports",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "bayengage-credentials",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          "mode": "id"
+        },
+        "sheetName": "Campaign Reports",
+        "columnToMatchOn": "Campaign ID",
+        "valueToMatchOn": "={{ $json.campaign_id }}",
+        "valuesToSend": "defineInNode",
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "Campaign ID",
+              "fieldValue": "={{ $json.campaign_id }}"
+            },
+            {
+              "column": "Campaign Name",
+              "fieldValue": "={{ $json.campaign_name }}"
+            },
+            {
+              "column": "Sent",
+              "fieldValue": "={{ $json.sent }}"
+            },
+            {
+              "column": "Opens",
+              "fieldValue": "={{ $json.opens }}"
+            },
+            {
+              "column": "Clicks",
+              "fieldValue": "={{ $json.clicks }}"
+            },
+            {
+              "column": "Bounces",
+              "fieldValue": "={{ $json.bounces }}"
+            },
+            {
+              "column": "Unsubscribes",
+              "fieldValue": "={{ $json.unsubscribes }}"
+            },
+            {
+              "column": "Open Rate",
+              "fieldValue": "={{ $json.open_rate }}"
+            },
+            {
+              "column": "Click Rate",
+              "fieldValue": "={{ $json.click_rate }}"
+            },
+            {
+              "column": "Report Date",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "google-sheets-update",
+      "name": "Update Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Transform BayEngage report data for Google Sheets\nconst reportData = items[0].json.data;\n\nreturn [{\n  json: {\n    campaign_id: reportData.campaign_id,\n    campaign_name: reportData.campaign_name,\n    sent: reportData.sent || 0,\n    opens: reportData.opens || 0,\n    clicks: reportData.clicks || 0,\n    bounces: reportData.bounces || 0,\n    unsubscribes: reportData.unsubscribes || 0,\n    open_rate: reportData.open_rate || '0%',\n    click_rate: reportData.click_rate || '0%'\n  }\n}];"
+      },
+      "id": "transform-data",
+      "name": "Transform Report Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [340, 300]
+    }
+  ],
+  "connections": {
+    "bayengage-get-reports": {
+      "main": [
+        [
+          {
+            "node": "transform-data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "transform-data": {
+      "main": [
+        [
+          {
+            "node": "google-sheets-update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
