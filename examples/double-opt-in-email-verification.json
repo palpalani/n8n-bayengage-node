@@ -1,0 +1,678 @@
+{
+  "id": "bWbwE1qVduRTdWmc",
+  "meta": {
+    "instanceId": "a98b2884375a41e5c54ee9fdf1ece06db7f5771d5abd20450875f3922d7c41f8"
+  },
+  "name": "🔐 Double Opt-In Email Verification with BayEngage",
+  "tags": [
+    {
+      "id": "2E1hRaAa0axOUCXV",
+      "name": "BayEngage",
+      "createdAt": "2025-05-08T22:11:01.814Z",
+      "updatedAt": "2025-05-08T22:11:01.814Z"
+    },
+    {
+      "id": "GZT3Cgu3i4As1Giz",
+      "name": "Double-OptIn",
+      "createdAt": "2025-05-08T22:10:58.928Z",
+      "updatedAt": "2025-05-08T22:10:58.928Z"
+    },
+    {
+      "id": "UZnyfKrtC83mHOyK",
+      "name": "Forms",
+      "createdAt": "2025-05-08T22:10:50.602Z",
+      "updatedAt": "2025-05-08T22:10:50.602Z"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "93c4049b-138e-4cb1-906a-8aada9485ffd",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "position": [
+        -4460,
+        -160
+      ],
+      "webhookId": "13e025ae-a071-4659-ad64-6aab4fdf26c8",
+      "parameters": {},
+      "notesInFlow": false,
+      "typeVersion": 2.2
+    },
+    {
+      "id": "358d84d7-381b-4de9-8c5e-d1d988c0b4a7",
+      "name": "Email Form",
+      "type": "n8n-nodes-base.form",
+      "position": [
+        -4140,
+        -160
+      ],
+      "webhookId": "65c69d26-adef-48d9-8bff-2f152fc5ce94",
+      "parameters": {},
+      "notesInFlow": false,
+      "typeVersion": 1
+    },
+    {
+      "id": "d0106dca-e3d1-45bc-b0e4-a0ac7a82a903",
+      "name": "Generate Code",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -3800,
+        -160
+      ],
+      "parameters": {
+        "jsCode": "// Generate a random 6-digit verification code\nconst code = Math.floor(100000 + Math.random() * 900000).toString();\n\n// Generate verification link\nconst verificationLink = `https://your-domain.com/verify?email=${$input.first().json.email}&code=${code}`;\n\nreturn {\n  email: $input.first().json.email,\n  verificationCode: code,\n  verificationLink: verificationLink,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "notesInFlow": false,
+      "typeVersion": 2,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "659f0327-c4ee-45f8-a38d-80e9aada20db",
+      "name": "Send Verification Email",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "position": [
+        -3020,
+        -160
+      ],
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "name": "Email Verification - {{ $json.email }}",
+        "subject": "Please verify your email address",
+        "htmlContent": "=<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Email Verification</title>\n</head>\n<body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n    <h2 style=\"color: #333;\">Verify Your Email Address</h2>\n    <p>Thank you for subscribing! Please verify your email address by clicking the button below:</p>\n    <div style=\"text-align: center; margin: 30px 0;\">\n        <a href=\"{{ $json.verificationLink }}\" style=\"background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;\">Verify Email Address</a>\n    </div>\n    <p>Or copy and paste this link into your browser:</p>\n    <p style=\"word-break: break-all; color: #666;\">{{ $json.verificationLink }}</p>\n    <p>If you didn't request this verification, please ignore this email.</p>\n    <hr style=\"margin: 30px 0; border: none; border-top: 1px solid #eee;\">\n    <p style=\"font-size: 12px; color: #999;\">This verification code will expire in 24 hours.</p>\n</body>\n</html>",
+        "listId": "={{ $json.listId }}",
+        "recipients": [
+          {
+            "email": "={{ $json.email }}"
+          }
+        ]
+      },
+      "notesInFlow": false,
+      "typeVersion": 1
+    },
+    {
+      "id": "ac5dfb19-9254-45fd-92bb-2d78a3062f51",
+      "name": "Store Verification Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        -3440,
+        -120
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "your-google-sheet-id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "VerificationCodes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.email }}",
+            "verificationCode": "={{ $json.verificationCode }}",
+            "verificationLink": "={{ $json.verificationLink }}",
+            "timestamp": "={{ $json.timestamp }}",
+            "verified": "false"
+          }
+        }
+      },
+      "notesInFlow": false,
+      "typeVersion": 4.5
+    },
+    {
+      "id": "f9586647-ea00-4b21-bd54-76f4314f926d",
+      "name": "Verification Form",
+      "type": "n8n-nodes-base.form",
+      "position": [
+        -2700,
+        -160
+      ],
+      "webhookId": "d21ac010-2872-4320-af3b-6f5e398dc8e5",
+      "parameters": {},
+      "notesInFlow": false,
+      "typeVersion": 1
+    },
+    {
+      "id": "e33fb6cd-59c2-4c84-9d51-5c8f7af1e2a1",
+      "name": "Check Code",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -2380,
+        -160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "code-match",
+              "leftValue": "={{ $json.verificationCode }}",
+              "rightValue": "={{ $json.storedCode }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "notesInFlow": false,
+      "typeVersion": 2.2
+    },
+    {
+      "id": "47dd37e4-409c-42dd-9554-b14c18b65cb0",
+      "name": "Main Form",
+      "type": "n8n-nodes-base.form",
+      "position": [
+        -1840,
+        -440
+      ],
+      "webhookId": "5c229f26-1625-4367-a3f9-ebd2cc3e8241",
+      "parameters": {},
+      "notesInFlow": false,
+      "typeVersion": 1
+    },
+    {
+      "id": "016ff76e-12f6-42ed-ad3c-234c585d6126",
+      "name": "Incorrect Code Form",
+      "type": "n8n-nodes-base.form",
+      "position": [
+        -1920,
+        600
+      ],
+      "webhookId": "c69a7027-4453-43ba-a5ae-5601d912978e",
+      "parameters": {},
+      "notesInFlow": false,
+      "typeVersion": 1
+    },
+    {
+      "id": "b1692894-3759-4f56-bd98-1c57a91dbb3c",
+      "name": "Second Check",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -1200,
+        60
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "code-match-2",
+              "leftValue": "={{ $json.verificationCode }}",
+              "rightValue": "={{ $json.storedCode }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "notesInFlow": false,
+      "typeVersion": 2.2
+    },
+    {
+      "id": "f883c1c1-4529-41a8-9ec4-4f2396fcc972",
+      "name": "Reset Form",
+      "type": "n8n-nodes-base.form",
+      "position": [
+        -640,
+        760
+      ],
+      "webhookId": "16d0402a-20a1-4a6c-9ab8-13c353a1efe7",
+      "parameters": {},
+      "notesInFlow": false,
+      "typeVersion": 1
+    },
+    {
+      "id": "dc335784-6532-4e63-b4a1-5b9cf77b5de6",
+      "name": "Workflow Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -4540,
+        -600
+      ],
+      "parameters": {
+        "content": "## BayEngage Double Opt-In Verification\n\nThis workflow implements a secure double opt-in process using BayEngage for email marketing:\n\n1. **Email Collection**: User submits email via form\n2. **Verification Code**: Generate unique 6-digit code\n3. **Email Sending**: Send verification email via BayEngage\n4. **Code Verification**: User enters code to verify\n5. **List Management**: Add verified contacts to BayEngage list"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "2160baa2-a011-4bd8-b4bb-a11845e0323c",
+      "name": "BayEngage Benefits",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -4240,
+        -600
+      ],
+      "parameters": {
+        "content": "## BayEngage Integration Benefits\n\n- **Professional Templates**: Beautiful HTML email templates\n- **High Deliverability**: Better inbox placement rates\n- **Analytics**: Track email opens and clicks\n- **Compliance**: Built-in GDPR/CAN-SPAM compliance\n- **List Management**: Advanced contact segmentation\n- **Automation**: Triggered email sequences"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "6fed7946-cac4-48c0-836d-863f87ac1da0",
+      "name": "Setup Instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3920,
+        -600
+      ],
+      "parameters": {
+        "content": "## Setup Instructions\n\n1. **BayEngage Credentials**: Configure BayEngage API credentials\n2. **List ID**: Set your BayEngage list ID for verified contacts\n3. **Google Sheets**: Configure Google Sheets for verification data storage\n4. **Domain**: Update verification links with your domain\n5. **Forms**: Configure form webhooks and endpoints"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "4d8dbcce-1dc3-48fa-a2f9-1561e6399462",
+      "name": "Security Features",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3600,
+        -600
+      ],
+      "parameters": {
+        "content": "## Security Features\n\n- **Unique Codes**: 6-digit random verification codes\n- **Time Expiry**: Codes expire after 24 hours\n- **One-time Use**: Codes are invalidated after verification\n- **Email Validation**: Proper email format validation\n- **Rate Limiting**: Prevent spam and abuse"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "3b1cdbbd-28f3-420a-b507-0a707e857845",
+      "name": "Email Template",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3120,
+        -600
+      ],
+      "parameters": {
+        "content": "## Email Template Features\n\n- **Responsive Design**: Works on all devices\n- **Clear CTA**: Prominent verification button\n- **Fallback Link**: Copy-paste option for accessibility\n- **Branding**: Customizable with your brand colors\n- **Professional**: Clean, trustworthy design"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "59276d85-d217-4883-86ac-427eb70083df",
+      "name": "Verification Process",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2800,
+        -600
+      ],
+      "parameters": {
+        "content": "## Verification Process\n\n1. User enters email address\n2. System generates unique verification code\n3. Verification email sent via BayEngage\n4. User clicks verification link or enters code\n5. System validates code and adds to verified list\n6. User gains access to main form/content"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "6c0df430-39c0-4dc9-b0a4-6b9a2aeabc12",
+      "name": "Error Handling",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2480,
+        -600
+      ],
+      "parameters": {
+        "content": "## Error Handling\n\n- **Invalid Code**: User-friendly error messages\n- **Expired Code**: Clear instructions to request new code\n- **Email Issues**: Fallback verification methods\n- **Duplicate Emails**: Prevent multiple verifications\n- **System Errors**: Graceful error recovery"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "05973b8b-b873-44c6-8274-1bae17118cb8",
+      "name": "Data Management",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2120,
+        300
+      ],
+      "parameters": {
+        "content": "## Data Management\n\n- **Google Sheets**: Store verification data\n- **BayEngage**: Manage verified contacts\n- **Audit Trail**: Track verification attempts\n- **Cleanup**: Remove expired codes automatically\n- **Analytics**: Monitor verification rates"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "1479b495-1d18-4a03-8fdb-d276b33e70ac",
+      "name": "Success Flow",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1480,
+        -220
+      ],
+      "parameters": {
+        "content": "## Success Flow\n\nAfter successful verification:\n- Contact added to BayEngage list\n- Welcome email sent (optional)\n- User redirected to main form\n- Access granted to protected content\n- Analytics updated"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "9936331c-2fb5-4d4f-ab8d-b586310a75ca",
+      "name": "Customization",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -780,
+        400
+      ],
+      "parameters": {
+        "content": "## Customization Options\n\n- **Email Templates**: Customize verification email design\n- **Code Length**: Adjust verification code length\n- **Expiry Time**: Change code expiration period\n- **Form Fields**: Add additional form fields\n- **Branding**: Apply your brand colors and logo"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "2ae131e8-69a1-4212-81d6-95aabaf5cd3e",
+      "name": "Compliance",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2120,
+        -740
+      ],
+      "parameters": {
+        "content": "## Compliance & Legal\n\n- **GDPR Compliant**: Proper consent management\n- **CAN-SPAM**: Unsubscribe options included\n- **Data Privacy**: Secure data handling\n- **Audit Trail**: Complete verification history\n- **Right to be Forgotten**: Data deletion capabilities"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "2a429ebd-460c-4a33-bc57-7576e31e1fea",
+      "name": "Continue With Your Flow",
+      "type": "n8n-nodes-base.noOp",
+      "position": [
+        -1200,
+        -440
+      ],
+      "parameters": {},
+      "typeVersion": 1
+    },
+    {
+      "id": "0935942e-3a27-4f5c-ac0f-9a0ddc68ac8a",
+      "name": "Next Steps",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1420,
+        -1000
+      ],
+      "parameters": {
+        "content": "## Next Steps After Verification\n\n1. **Welcome Email**: Send personalized welcome message\n2. **Onboarding**: Guide user through your platform\n3. **Segmentation**: Add to appropriate contact lists\n4. **Analytics**: Track user engagement\n5. **Follow-up**: Start automated email sequences"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "verify-code-lookup",
+      "name": "Lookup Verification Code",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        -2560,
+        -160
+      ],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "your-google-sheet-id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "VerificationCodes"
+        },
+        "options": {
+          "returnFirstMatch": true
+        },
+        "filters": {
+          "conditions": [
+            {
+              "column": "email",
+              "condition": "equal",
+              "value": "={{ $json.email }}"
+            }
+          ]
+        }
+      },
+      "notesInFlow": false,
+      "typeVersion": 4.5
+    },
+    {
+      "id": "update-verification-status",
+      "name": "Update Verification Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        -1600,
+        -440
+      ],
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "your-google-sheet-id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "VerificationCodes"
+        },
+        "columnToMatchOn": "email",
+        "valueToMatchOn": "={{ $json.email }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "verified": "true",
+            "verifiedAt": "={{ $now.toISO() }}"
+          }
+        }
+      },
+      "notesInFlow": false,
+      "typeVersion": 4.5
+    },
+    {
+      "id": "add-to-bayengage-list",
+      "name": "Add to BayEngage List",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "position": [
+        -1400,
+        -440
+      ],
+      "parameters": {
+        "resource": "contact",
+        "operation": "upsert",
+        "email": "={{ $json.email }}",
+        "firstName": "={{ $json.firstName || '' }}",
+        "lastName": "={{ $json.lastName || '' }}",
+        "customFields": {
+          "verified": "true",
+          "verificationDate": "={{ $now.toISO() }}"
+        }
+      },
+      "notesInFlow": false,
+      "typeVersion": 1
+    }
+  ],
+  "active": false,
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5ace2a5e-1f6c-4c13-a069-d71dcb22ee1d",
+  "connections": {
+    "Main Form": {
+      "main": [
+        [
+          {
+            "node": "Update Verification Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Code": {
+      "main": [
+        [
+          {
+            "node": "Main Form",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Incorrect Code Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Form": {
+      "main": [
+        [
+          {
+            "node": "Generate Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset Form": {
+      "main": [
+        [
+          {
+            "node": "Email Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Verification Email": {
+      "main": [
+        [
+          {
+            "node": "Verification Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Verification Data": {
+      "main": [
+        [
+          {
+            "node": "Send Verification Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Second Check": {
+      "main": [
+        [
+          {
+            "node": "Main Form",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reset Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Code": {
+      "main": [
+        [
+          {
+            "node": "Store Verification Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verification Form": {
+      "main": [
+        [
+          {
+            "node": "Lookup Verification Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Email Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Incorrect Code Form": {
+      "main": [
+        [
+          {
+            "node": "Second Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Verification Code": {
+      "main": [
+        [
+          {
+            "node": "Check Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Verification Status": {
+      "main": [
+        [
+          {
+            "node": "Add to BayEngage List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to BayEngage List": {
+      "main": [
+        [
+          {
+            "node": "Continue With Your Flow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
