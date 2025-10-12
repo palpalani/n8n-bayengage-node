@@ -251,17 +251,6 @@ Add these badges to your README.md:
 
 ---
 
-## Best Practices
-
-1. **Always bump version** before creating releases
-2. **Run tests locally** before pushing
-3. **Review Dependabot PRs** even if auto-merged
-4. **Keep workflows up to date** with latest action versions
-5. **Monitor security alerts** from CodeQL and Dependabot
-6. **Test package installation** after publishing
-
----
-
 ## Support
 
 For issues with workflows:
