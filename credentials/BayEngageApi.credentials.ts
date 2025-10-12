@@ -8,7 +8,7 @@ import {
 export class BayEngageApi implements ICredentialType {
 	name = 'bayEngageApi';
 	displayName = 'BayEngage API';
-	documentationUrl = 'https://intercom.help/targetbay-bayengage/en/collections/11772762-api';
+	documentationUrl = 'https://help.targetbay.com/s/topic/0TOe20000000CCTGA2/bayengage';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Base URL',

@@ -93,7 +93,7 @@ body:
     attributes:
       label: BayEngage API Reference
       description: If this relates to a BayEngage API endpoint, please provide the API documentation link
-      placeholder: https://intercom.help/targetbay-bayengage/...
+      placeholder: https://help.targetbay.com/s/topic/0TOe20000000CCTGA2/bayengage
 
   - type: textarea
     id: example

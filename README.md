@@ -440,7 +440,7 @@ Check out the basic example workflows in the `examples/` directory:
 ## Resources
 
 - [n8n Community Nodes Documentation](https://docs.n8n.io/integrations/#community-nodes)
-- [BayEngage API Documentation](https://intercom.help/targetbay-bayengage/en/collections/11772762-api)
+- [BayEngage API Documentation](https://help.targetbay.com/s/topic/0TOe20000000CCTGA2/bayengage)
 - [BayEngage Dashboard](https://app.bayengage.com)
 - [n8n Community Forum](https://community.n8n.io)
 - [GitHub Repository](https://github.com/bayengage/n8n-nodes-bayengage)
