@@ -1,0 +1,541 @@
+{
+  "name": "Follow-up Emails",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "AI-powered follow-up email automation using BayEngage. Analyzes customer interactions and triggers personalized follow-up campaigns based on behavior patterns and engagement history.",
+        "height": 530,
+        "width": 1100,
+        "color": 5
+      },
+      "id": "9f233e35-f7da-4e01-9423-5b375143b2b8",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "follow-up-emails"
+      },
+      "id": "cb84f658-4d92-43b6-ba38-6511ad71ac6d",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chunkSize": 400,
+        "chunkOverlap": 40
+      },
+      "id": "fd9c8817-cd20-4521-a501-ddf62864c092",
+      "name": "Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        -130,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "86dbd6f8-2249-41bf-8efc-6b93892ff5b1",
+      "name": "Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        70,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "OPENAI_API",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "options": {},
+        "indexName": "follow-up_emails"
+      },
+      "id": "f61052dc-bfaa-4aae-aad7-40fdee0bec99",
+      "name": "Weaviate Insert",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreWeaviate",
+      "typeVersion": 1,
+      "position": [
+        270,
+        0
+      ],
+      "credentials": {
+        "weaviateApi": {
+          "id": "WEAVIATE_API",
+          "name": "Weaviate account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "indexName": "follow-up_emails"
+      },
+      "id": "6c4053cf-94a1-4a38-9f15-5d6b3cddfc0c",
+      "name": "Weaviate Query",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreWeaviate",
+      "typeVersion": 1,
+      "position": [
+        270,
+        -180
+      ],
+      "credentials": {
+        "weaviateApi": {
+          "id": "WEAVIATE_API",
+          "name": "Weaviate account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "Weaviate",
+        "description": "Vector context"
+      },
+      "id": "b571563d-fc66-45e6-99f0-d5de332b07ec",
+      "name": "Vector Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1,
+      "position": [
+        450,
+        -180
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "bce39b85-50bc-4202-9ec4-6e23a06345b3",
+      "name": "Window Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        450,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "1a8964b2-92c9-4aa2-b56d-3e4c4f5fa4c8",
+      "name": "Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [
+        450,
+        -340
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "ANTHROPIC_API",
+          "name": "Anthropic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Handle data",
+        "options": {
+          "systemMessage": "You are an assistant for Follow-up Emails. Analyze customer behavior and interaction history to determine the most appropriate follow-up email strategy. Consider timing, content personalization, and engagement patterns. Return a JSON object with follow-up recommendations including email type, timing, and content suggestions."
+        }
+      },
+      "id": "de0333cc-9bb6-440a-9f09-591436941922",
+      "name": "RAG Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "upsert",
+        "email": "={{ $json.email || $json.customer_email || 'user@example.com' }}",
+        "firstName": "={{ $json.first_name || $json.customer_name || 'Customer' }}",
+        "lastName": "={{ $json.last_name || '' }}",
+        "customFields": {
+          "values": [
+            {
+              "name": "last_interaction",
+              "value": "={{ $json.last_interaction || new Date().toISOString() }}"
+            },
+            {
+              "name": "follow_up_type",
+              "value": "={{ $('RAG Agent').item.json.follow_up_type || 'general' }}"
+            },
+            {
+              "name": "engagement_score",
+              "value": "={{ $json.engagement_score || '0' }}"
+            }
+          ]
+        }
+      },
+      "id": "bayengage-contact-upsert",
+      "name": "BayEngage Contact",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [
+        950,
+        -40
+      ],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "BAYENGAGE_API",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "template",
+        "operation": "get",
+        "templateId": "={{ $('RAG Agent').item.json.template_id || 'follow_up_template' }}"
+      },
+      "id": "bayengage-template-get",
+      "name": "BayEngage Template",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [
+        950,
+        -200
+      ],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "BAYENGAGE_API",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "templateId": "={{ $('BayEngage Template').item.json.id }}",
+        "contactId": "={{ $('BayEngage Contact').item.json.id }}",
+        "subject": "={{ $('RAG Agent').item.json.subject || 'Follow-up from us' }}",
+        "content": "={{ $('RAG Agent').item.json.content || $('RAG Agent').item.json.output }}"
+      },
+      "id": "bayengage-campaign-create",
+      "name": "BayEngage Create Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -40
+      ],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "BAYENGAGE_API",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "send",
+        "campaignId": "={{ $json.id }}"
+      },
+      "id": "bayengage-campaign-send",
+      "name": "BayEngage Send Campaign",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        -40
+      ],
+      "credentials": {
+        "bayEngageApi": {
+          "id": "BAYENGAGE_API",
+          "name": "BayEngage API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Follow-up Emails"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Log",
+          "mode": "list",
+          "cachedResultName": "Log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": "Status,Customer Email,Follow-up Type,Template ID,Campaign ID,Send Status",
+          "schema": [
+            {
+              "name": "Status",
+              "value": "={{ $json.success ? 'Sent' : 'Failed' }}"
+            },
+            {
+              "name": "Customer Email",
+              "value": "={{ $json.email || $json.customer_email }}"
+            },
+            {
+              "name": "Follow-up Type",
+              "value": "={{ $('RAG Agent').item.json.follow_up_type || 'general' }}"
+            },
+            {
+              "name": "Template ID",
+              "value": "={{ $('BayEngage Template').item.json.id }}"
+            },
+            {
+              "name": "Campaign ID",
+              "value": "={{ $('BayEngage Create Campaign').item.json.id }}"
+            },
+            {
+              "name": "Send Status",
+              "value": "={{ $('BayEngage Send Campaign').item.json.status || 'Pending' }}"
+            }
+          ]
+        }
+      },
+      "id": "bf20f642-7227-4478-aa9b-4c507ca51c57",
+      "name": "Append Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1700,
+        -40
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SHEETS_API",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#alerts",
+        "text": "Follow-up Emails error: {{ $json.error.message }}"
+      },
+      "id": "d7266d35-f67b-48b9-ac50-86b7298d5939",
+      "name": "Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        120
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "SLACK_API",
+          "name": "Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Text Splitter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Window Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Splitter": {
+      "main": [
+        [
+          {
+            "node": "Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Weaviate Insert",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Weaviate Insert",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Weaviate Query",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weaviate Insert": {
+      "ai_document": [
+        []
+      ]
+    },
+    "Weaviate Query": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Vector Tool",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "RAG Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "RAG Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "RAG Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG Agent": {
+      "main": [
+        [
+          {
+            "node": "BayEngage Contact",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "BayEngage Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "onError": [
+        [
+          {
+            "node": "Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BayEngage Contact": {
+      "main": [
+        [
+          {
+            "node": "BayEngage Create Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BayEngage Template": {
+      "main": [
+        [
+          {
+            "node": "BayEngage Create Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BayEngage Create Campaign": {
+      "main": [
+        [
+          {
+            "node": "BayEngage Send Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BayEngage Send Campaign": {
+      "main": [
+        [
+          {
+            "node": "Append Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "onError": [
+        [
+          {
+            "node": "Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "triggerCount": 1
+}

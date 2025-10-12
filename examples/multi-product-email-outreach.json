@@ -1,0 +1,414 @@
+{
+  "meta": {
+    "instanceId": "4786bf0f18c0e8e92c361de5a158cabf4eb0bb3b9c113091b054ff26e359a029",
+    "templateCredsSetupCompleted": true
+  },
+  "name": "AI-Personalized Multi-Product Email Outreach with BayEngage",
+  "nodes": [
+    {
+      "id": "2bbfcb6a-940c-49ee-848a-65516c28b24f",
+      "name": "Extract URLs from Google Search",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1240,
+        260
+      ],
+      "parameters": {
+        "jsCode": "// Extract URLs from Google Search results\nconst searchResults = $input.all();\nconst urls = [];\n\nfor (const item of searchResults) {\n  const data = item.json;\n  if (data.url) {\n    urls.push({\n      url: data.url,\n      title: data.title || '',\n      description: data.description || ''\n    });\n  }\n}\n\nreturn urls.map(url => ({ json: url }));"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "2f089fa5-d328-4cad-ba18-b099d0db828e",
+      "name": "Remove Duplicate URLs",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "onError": "continueErrorOutput",
+      "position": [
+        2120,
+        180
+      ],
+      "parameters": {
+        "compare": "allFields"
+      },
+      "typeVersion": 1.1,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "0c4f7004-a7bd-4233-b20e-bd7a96c20bd8",
+      "name": "Remove Duplicate Emails",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "onError": "continueErrorOutput",
+      "position": [
+        2000,
+        1180
+      ],
+      "parameters": {
+        "compare": "allFields"
+      },
+      "typeVersion": 1.1
+    },
+    {
+      "id": "3c7bff6c-28f9-4d95-9e97-68e69c274931",
+      "name": "Split Emails into Items",
+      "type": "n8n-nodes-base.splitOut",
+      "onError": "continueRegularOutput",
+      "position": [
+        1380,
+        940
+      ],
+      "parameters": {
+        "fieldToSplitOut": "emails"
+      },
+      "typeVersion": 1,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "77624839-8afe-47c4-ad2d-6f10da785dca",
+      "name": "Aggregate Email Lists",
+      "type": "n8n-nodes-base.aggregate",
+      "onError": "continueErrorOutput",
+      "position": [
+        1000,
+        940
+      ],
+      "parameters": {
+        "aggregate": "allFields",
+        "options": {}
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "0ca87cc7-2112-46c4-9f5e-5229687624e4",
+      "name": "Search Google Maps",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        880,
+        260
+      ],
+      "parameters": {
+        "url": "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        "method": "GET",
+        "qs": {
+          "query": "={{ $json.searchQuery }}",
+          "key": "={{ $json.googleMapsApiKey }}"
+        }
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "4f3d81c4-ea82-48c5-9b84-8afc6e458ac3",
+      "name": "Filter Out Google/Schema URLs",
+      "type": "n8n-nodes-base.filter",
+      "onError": "continueRegularOutput",
+      "position": [
+        1540,
+        240
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "filter-urls",
+              "leftValue": "={{ $json.url }}",
+              "rightValue": "google.com",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "typeVersion": 2.2,
+      "alwaysOutputData": false
+    },
+    {
+      "id": "8e23dc4c-a801-4114-8a59-618b85efb6e1",
+      "name": "Loop Through Unique URLs",
+      "type": "n8n-nodes-base.splitInBatches",
+      "onError": "continueRegularOutput",
+      "position": [
+        2620,
+        360
+      ],
+      "parameters": {
+        "batchSize": 5
+      },
+      "typeVersion": 3
+    },
+    {
+      "id": "ai-personalization",
+      "name": "AI Personalization Engine",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        3000,
+        360
+      ],
+      "parameters": {
+        "text": "=Create a personalized email for the following prospect:\n\n**Company Info:**\n- Name: {{ $json.companyName }}\n- Industry: {{ $json.industry }}\n- Website: {{ $json.website }}\n- Description: {{ $json.description }}\n\n**Products to Promote:**\n{{ $json.products.map(p => `- ${p.name}: ${p.description}`).join('\\n') }}\n\n**Requirements:**\n1. Create a compelling subject line (under 50 characters)\n2. Write a personalized email body (150-200 words)\n3. Include 2-3 relevant product recommendations\n4. Add a clear call-to-action\n5. Use a professional but friendly tone\n6. Reference specific company details\n\n**Output Format:**\n```json\n{\n  \"subject\": \"Subject line here\",\n  \"body\": \"Email body here\",\n  \"recommended_products\": [\"product1\", \"product2\"],\n  \"cta\": \"Call to action text\"\n}\n```",
+        "promptType": "define"
+      },
+      "typeVersion": 1.5
+    },
+    {
+      "id": "openai-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        2800,
+        500
+      ],
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "send-personalized-email",
+      "name": "Send Personalized Email via BayEngage",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "position": [
+        3400,
+        360
+      ],
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "name": "Multi-Product Outreach - {{ $json.companyName }}",
+        "subject": "={{ $json.aiOutput.subject }}",
+        "htmlContent": "=<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>{{ $json.aiOutput.subject }}</title>\n</head>\n<body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n    <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;\">\n        <h1 style=\"margin: 0; font-size: 24px;\">Hi {{ $json.contactName || 'there' }}!</h1>\n        <p style=\"margin: 10px 0 0 0; opacity: 0.9;\">I hope this email finds you well</p>\n    </div>\n    \n    <div style=\"background: #f9f9f9; padding: 30px; border-radius: 8px; margin-bottom: 30px;\">\n        <div style=\"white-space: pre-line; line-height: 1.6; color: #333;\">{{ $json.aiOutput.body }}</div>\n        \n        <div style=\"margin: 30px 0;\">\n            <h3 style=\"color: #444; margin-bottom: 15px;\">Recommended Products for {{ $json.companyName }}:</h3>\n            <ul style=\"color: #555; padding-left: 20px;\">\n                {{ $json.aiOutput.recommended_products.map(product => `<li style=\"margin-bottom: 8px;\">${product}</li>`).join('') }}\n            </ul>\n        </div>\n        \n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"{{ $json.ctaLink || 'https://your-website.com/contact' }}\" style=\"background-color: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">\n                {{ $json.aiOutput.cta }}\n            </a>\n        </div>\n    </div>\n    \n    <div style=\"background: #e8f2ff; padding: 20px; border-radius: 8px; text-align: center;\">\n        <p style=\"margin: 0; color: #666; font-size: 14px;\">\n            Best regards,<br>\n            <strong>{{ $json.senderName || 'Your Name' }}</strong><br>\n            {{ $json.senderTitle || 'Business Development' }}<br>\n            {{ $json.companyName || 'Your Company' }}\n        </p>\n    </div>\n    \n    <div style=\"margin-top: 30px; text-align: center; font-size: 12px; color: #999;\">\n        <p>If you're not interested, no worries! Just reply with \"unsubscribe\" and I'll remove you from future emails.</p>\n    </div>\n</body>\n</html>",
+        "listId": "={{ $json.listId }}",
+        "recipients": [
+          {
+            "email": "={{ $json.email }}",
+            "firstName": "={{ $json.contactName?.split(' ')[0] || '' }}",
+            "lastName": "={{ $json.contactName?.split(' ').slice(1).join(' ') || '' }}"
+          }
+        ]
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "workflow-docs",
+      "name": "Workflow Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        800,
+        100
+      ],
+      "parameters": {
+        "color": 4,
+        "width": 400,
+        "height": 300,
+        "content": "## Multi-Product Email Outreach with BayEngage\n\nThis workflow automates personalized multi-product email outreach:\n\n1. **Lead Discovery**: Search Google Maps for prospects\n2. **Data Enrichment**: Extract company information\n3. **AI Personalization**: Generate personalized emails\n4. **Email Distribution**: Send via BayEngage\n5. **Analytics**: Track campaign performance\n\n### BayEngage Benefits:\n- Professional email templates\n- Better deliverability\n- Advanced personalization\n- Campaign analytics\n- List management"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "configuration",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        600,
+        260
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "search-query",
+              "name": "searchQuery",
+              "type": "string",
+              "value": "restaurants in New York"
+            },
+            {
+              "id": "google-maps-api-key",
+              "name": "googleMapsApiKey",
+              "type": "string",
+              "value": "your-google-maps-api-key"
+            },
+            {
+              "id": "list-id",
+              "name": "listId",
+              "type": "string",
+              "value": "your-bayengage-list-id"
+            },
+            {
+              "id": "products",
+              "name": "products",
+              "type": "array",
+              "value": "=[\n  {\n    \"name\": \"Restaurant Management Software\",\n    \"description\": \"Complete POS and inventory management solution\"\n  },\n  {\n    \"name\": \"Online Ordering System\",\n    \"description\": \"Accept online orders and manage delivery\"\n  },\n  {\n    \"name\": \"Customer Loyalty Program\",\n    \"description\": \"Increase repeat customers with rewards\"\n  }\n]"
+            },
+            {
+              "id": "sender-name",
+              "name": "senderName",
+              "type": "string",
+              "value": "Your Name"
+            },
+            {
+              "id": "sender-title",
+              "name": "senderTitle",
+              "type": "string",
+              "value": "Business Development Manager"
+            },
+            {
+              "id": "cta-link",
+              "name": "ctaLink",
+              "type": "string",
+              "value": "https://your-website.com/contact"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
+    },
+    {
+      "id": "ai-features",
+      "name": "AI Features",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3200,
+        100
+      ],
+      "parameters": {
+        "color": 5,
+        "width": 400,
+        "height": 200,
+        "content": "## AI Personalization Features\n\n- **Company Analysis**: Analyzes company info and industry\n- **Product Matching**: Recommends relevant products\n- **Tone Adaptation**: Adjusts tone based on industry\n- **Subject Optimization**: Creates compelling subject lines\n- **Content Generation**: Writes personalized email content"
+      },
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract URLs from Google Search": {
+      "main": [
+        [
+          {
+            "node": "Filter Out Google/Schema URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicate URLs": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Unique URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicate Emails": {
+      "main": [
+        [
+          {
+            "node": "Split Emails into Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Emails into Items": {
+      "main": [
+        [
+          {
+            "node": "Send Personalized Email via BayEngage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Email Lists": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicate Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Google Maps": {
+      "main": [
+        [
+          {
+            "node": "Extract URLs from Google Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Out Google/Schema URLs": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicate URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Unique URLs": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AI Personalization Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Personalization Engine": {
+      "main": [
+        [
+          {
+            "node": "Send Personalized Email via BayEngage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Personalization Engine",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Search Google Maps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

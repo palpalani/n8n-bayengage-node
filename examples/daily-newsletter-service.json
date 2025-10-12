@@ -1,0 +1,270 @@
+{
+  "meta": {
+    "instanceId": "408f9fb9940c3cb18ffdef0e0150fe342d6e655c3a9fac21f0f644e8bedabcd9",
+    "templateCredsSetupCompleted": true
+  },
+  "name": "Daily Newsletter Service with BayEngage",
+  "nodes": [
+    {
+      "id": "c3a9ba81-3a7e-4afe-be8b-cf482cbb88c2",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -1040,
+        -540
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "f63d035c-5a7b-4cf4-8730-5fa7dff6f94b",
+      "name": "Get Subscribers",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "position": [
+        -860,
+        -540
+      ],
+      "parameters": {
+        "resource": "contact",
+        "operation": "list",
+        "listId": "={{ $json.listId }}"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "e93aa8de-5c68-4a01-ae60-beb141e0a430",
+      "name": "Get Unique Categories",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -400,
+        -160
+      ],
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fe138128-50d5-469f-8c0b-0af8c873f198",
+              "name": "categories",
+              "type": "array",
+              "value": "={{ $input.all().flatMap(item => item.json.categories).unique() }}"
+            }
+          ]
+        }
+      },
+      "executeOnce": true,
+      "typeVersion": 3.4
+    },
+    {
+      "id": "a874ae4e-d67e-4019-9e5c-03ea677468ae",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        760,
+        80
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "8gccIjcuf3gvaoEr",
+          "name": "OpenAi account"
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "newsletter-generator",
+      "name": "Newsletter Content Generator",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        580,
+        80
+      ],
+      "parameters": {
+        "text": "=Generate a daily newsletter with the following structure:\n\n**Subject Line:** Create an engaging subject line for today's newsletter\n\n**Header:** Welcome message with today's date\n\n**Main Content:**\n1. **Top Story** - Most important news of the day\n2. **Industry Updates** - 3-4 key industry developments\n3. **Technology Spotlight** - Latest tech trends or innovations\n4. **Business Insights** - Tips and strategies for professionals\n5. **Quick Reads** - 2-3 brief, interesting articles\n\n**Footer:** Include unsubscribe link and contact information\n\n**Categories to focus on:** {{ $json.categories.join(', ') }}\n\n**Tone:** Professional yet engaging, informative but not overwhelming\n**Length:** Keep it concise but comprehensive\n**Format:** Use HTML formatting for better presentation",
+        "promptType": "define"
+      },
+      "typeVersion": 1.5
+    },
+    {
+      "id": "format-newsletter",
+      "name": "Format Newsletter HTML",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        800,
+        80
+      ],
+      "parameters": {
+        "jsCode": "// Format the AI-generated newsletter content into professional HTML\nconst aiOutput = $input.first().json.output || $input.first().json.text || $input.first().json;\n\n// Extract content from AI output\nlet newsletterContent = '';\nif (typeof aiOutput === 'string') {\n  newsletterContent = aiOutput;\n} else if (typeof aiOutput === 'object' && aiOutput.content) {\n  newsletterContent = aiOutput.content;\n} else {\n  newsletterContent = JSON.stringify(aiOutput);\n}\n\n// Clean up the content\nnewsletterContent = newsletterContent\n  .replace(/\\\\n/g, '\\n')\n  .replace(/^\\s+|\\s+$/g, '')\n  .replace(/\\n{3,}/g, '\\n\\n');\n\n// Generate professional HTML newsletter\nfunction generateNewsletterHTML(content) {\n  // Convert markdown-like content to HTML\n  let htmlContent = content\n    .replace(/^# (.*$)/gm, '<h1 style=\"color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-bottom: 20px;\">$1</h1>')\n    .replace(/^## (.*$)/gm, '<h2 style=\"color: #444; margin-top: 30px; margin-bottom: 15px; font-size: 20px;\">$1</h2>')\n    .replace(/^### (.*$)/gm, '<h3 style=\"color: #555; margin-top: 20px; margin-bottom: 10px; font-size: 16px;\">$1</h3>')\n    .replace(/\\*\\*(.*?)\\*\\*/g, '<strong style=\"color: #333;\">$1</strong>')\n    .replace(/\\*(.*?)\\*/g, '<em style=\"color: #666;\">$1</em>')\n    .replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href=\"$2\" style=\"color: #667eea; text-decoration: none;\">$1</a>')\n    .replace(/^- (.*$)/gm, '<li style=\"margin-bottom: 8px; color: #555;\">$1</li>')\n    .replace(/^\\d+\\. (.*$)/gm, '<li style=\"margin-bottom: 8px; color: #555;\">$1</li>')\n    .replace(/\\n\\n/g, '</p><p style=\"line-height: 1.6; margin-bottom: 15px; color: #555;\">')\n    .replace(/\\n/g, '<br>');\n\n  // Wrap list items in ul/ol tags\n  htmlContent = htmlContent.replace(/(<li[^>]*>.*?<\\/li>)/gs, '<ul style=\"padding-left: 20px; margin-bottom: 20px;\">$1</ul>');\n\n  const currentDate = new Date().toLocaleDateString('en-US', { \n    year: 'numeric', \n    month: 'long', \n    day: 'numeric' \n  });\n\n  return `\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Daily Newsletter - ${currentDate}</title>\n</head>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;\">\n    <div style=\"background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);\">\n        <div style=\"text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;\">\n            <h1 style=\"margin: 0; font-size: 28px;\">📰 Daily Newsletter</h1>\n            <p style=\"margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;\">${currentDate}</p>\n        </div>\n        \n        <div style=\"background: #fafafa; padding: 30px; border-radius: 8px; margin: 20px 0;\">\n            <p style=\"line-height: 1.6; margin-bottom: 15px; color: #555;\">${htmlContent}</p>\n        </div>\n        \n        <div style=\"margin-top: 40px; padding: 30px; background: #f0f4ff; border-radius: 8px; text-align: center;\">\n            <p style=\"font-size: 16px; color: #555; margin-bottom: 15px;\">Thank you for reading today's newsletter!</p>\n            <p style=\"font-size: 16px; color: #555; margin-bottom: 20px;\">We'll be back tomorrow with more insights and updates.</p>\n            <p style=\"font-size: 18px; color: #333; margin: 0;\"><strong>Best regards,<br>Newsletter Team</strong></p>\n        </div>\n        \n        <div style=\"margin-top: 30px; padding: 20px; background: #e8f2ff; border-radius: 8px; font-size: 14px; color: #666; text-align: center;\">\n            <p style=\"margin: 5px 0;\">📧 This newsletter was automatically generated and sent via n8n automation.</p>\n            <p style=\"margin: 5px 0;\">🔗 <a href=\"#\" style=\"color: #667eea;\">Unsubscribe</a> | <a href=\"#\" style=\"color: #667eea;\">Contact Us</a></p>\n        </div>\n    </div>\n</body>\n</html>`;\n}\n\n// Generate subject line\nfunction generateSubjectLine() {\n  const currentDate = new Date().toLocaleDateString('en-US', { \n    month: 'short', \n    day: 'numeric' \n  });\n  return `📰 Daily Newsletter - ${currentDate}`;\n}\n\nconst htmlContent = generateNewsletterHTML(newsletterContent);\nconst subjectLine = generateSubjectLine();\n\nreturn [\n  {\n    json: {\n      subject: subjectLine,\n      html: htmlContent,\n      content: newsletterContent,\n      generated_at: new Date().toISOString(),\n      newsletter_type: \"daily\"\n    }\n  }\n];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "send-newsletter",
+      "name": "Send Newsletter via BayEngage",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "position": [
+        1000,
+        80
+      ],
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "name": "Daily Newsletter - {{ $now.format('YYYY-MM-DD') }}",
+        "subject": "={{ $json.subject }}",
+        "htmlContent": "={{ $json.html }}",
+        "listId": "={{ $json.listId }}"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "workflow-docs",
+      "name": "Workflow Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1200,
+        -400
+      ],
+      "parameters": {
+        "color": 4,
+        "width": 400,
+        "height": 300,
+        "content": "## Daily Newsletter Service with BayEngage\n\nThis workflow automates daily newsletter creation and distribution:\n\n1. **Subscriber Management**: Fetch subscribers from BayEngage\n2. **Content Generation**: AI generates daily newsletter content\n3. **Professional Formatting**: HTML formatting for better presentation\n4. **Email Distribution**: Send via BayEngage for better deliverability\n\n### Benefits:\n- Automated daily delivery\n- Professional email templates\n- Better deliverability\n- Advanced analytics\n- Subscriber management"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "bayengage-config",
+      "name": "BayEngage Configuration",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -600,
+        -540
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "list-id",
+              "name": "listId",
+              "type": "string",
+              "value": "your-bayengage-list-id"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
+    },
+    {
+      "id": "content-examples",
+      "name": "Content Examples",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        400,
+        -200
+      ],
+      "parameters": {
+        "color": 5,
+        "width": 400,
+        "height": 200,
+        "content": "## Newsletter Content Structure\n\n- **Top Story**: Most important news\n- **Industry Updates**: Key developments\n- **Technology Spotlight**: Latest trends\n- **Business Insights**: Professional tips\n- **Quick Reads**: Brief articles\n\nContent is AI-generated and professionally formatted."
+      },
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get Subscribers": {
+      "main": [
+        [
+          {
+            "node": "Get Unique Categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "BayEngage Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unique Categories": {
+      "main": [
+        [
+          {
+            "node": "Newsletter Content Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Newsletter Content Generator": {
+      "main": [
+        [
+          {
+            "node": "Format Newsletter HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Newsletter HTML": {
+      "main": [
+        [
+          {
+            "node": "Send Newsletter via BayEngage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Newsletter Content Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BayEngage Configuration": {
+      "main": [
+        [
+          {
+            "node": "Get Subscribers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
