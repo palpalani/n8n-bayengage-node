@@ -1,0 +1,290 @@
+{
+  "id": "mcMZMEYwE7DfnM5a",
+  "meta": {
+    "instanceId": "18c9b77a7db94bab09d77f4a9c44dd94853695bba1618cb7bc3c4bc412c07c1e"
+  },
+  "name": "Cold Email Outreach with BayEngage",
+  "tags": [],
+  "nodes": [
+    {
+      "id": "46595977-723a-412e-a286-4d0b89ab0929",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        60,
+        0
+      ],
+      "parameters": {},
+      "typeVersion": 1.2
+    },
+    {
+      "id": "38d81f78-90ba-4afc-a76a-17036fccc87a",
+      "name": "Workflow Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -60,
+        -240
+      ],
+      "parameters": {
+        "content": "## Cold Email Outreach with BayEngage\n\nThis workflow automates cold email outreach using BayEngage for professional email marketing:\n\n1. **Lead Management**: Fetch leads from Google Sheets\n2. **Batch Processing**: Process leads in manageable batches\n3. **Personalized Emails**: Send personalized cold emails via BayEngage\n4. **Status Tracking**: Update lead status after sending\n\n### BayEngage Benefits:\n- Professional email templates\n- Better deliverability\n- Advanced analytics\n- Compliance management\n- List segmentation"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "ad7a4803-e989-4424-b153-7db26eb0ad7b",
+      "name": "Batch Processing of Leads",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        500,
+        0
+      ],
+      "parameters": {
+        "batchSize": 10
+      },
+      "typeVersion": 3
+    },
+    {
+      "id": "680d867f-13d0-444c-a574-2e15e14e4846",
+      "name": "Send Personalized Email",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "position": [
+        780,
+        -100
+      ],
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "name": "Cold Outreach - {{ $json.name || $json.email }}",
+        "subject": "={{ $json.subject || 'Quick question about your business' }}",
+        "htmlContent": "=<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Cold Outreach Email</title>\n</head>\n<body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n    <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;\">\n        <h1 style=\"margin: 0; font-size: 24px;\">Hi {{ $json.name || 'there' }}!</h1>\n        <p style=\"margin: 10px 0 0 0; opacity: 0.9;\">I hope this email finds you well</p>\n    </div>\n    \n    <div style=\"background: #f9f9f9; padding: 30px; border-radius: 8px; margin-bottom: 30px;\">\n        <p style=\"color: #333; line-height: 1.6; margin-bottom: 20px;\">\n            {{ $json.message || 'I came across your company and was impressed by your work. I believe there might be an opportunity for us to collaborate and help you achieve your business goals.' }}\n        </p>\n        \n        <p style=\"color: #333; line-height: 1.6; margin-bottom: 20px;\">\n            {{ $json.value_proposition || 'We specialize in helping businesses like yours increase their efficiency and grow their revenue through our proven solutions.' }}\n        </p>\n        \n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"{{ $json.cta_link || 'https://your-website.com/schedule-call' }}\" style=\"background-color: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">\n                {{ $json.cta_text || 'Schedule a Quick Call' }}\n            </a>\n        </div>\n        \n        <p style=\"color: #666; font-size: 14px; text-align: center;\">\n            No pressure - just a quick 15-minute conversation to see if there's a fit.\n        </p>\n    </div>\n    \n    <div style=\"background: #e8f2ff; padding: 20px; border-radius: 8px; text-align: center;\">\n        <p style=\"margin: 0; color: #666; font-size: 14px;\">\n            Best regards,<br>\n            <strong>{{ $json.sender_name || 'Your Name' }}</strong><br>\n            {{ $json.sender_title || 'Business Development' }}<br>\n            {{ $json.company_name || 'Your Company' }}\n        </p>\n    </div>\n    \n    <div style=\"margin-top: 30px; text-align: center; font-size: 12px; color: #999;\">\n        <p>If you're not interested, no worries! Just reply with \"unsubscribe\" and I'll remove you from future emails.</p>\n    </div>\n</body>\n</html>",
+        "listId": "={{ $json.listId }}",
+        "recipients": [
+          {
+            "email": "={{ $json.email }}",
+            "firstName": "={{ $json.name?.split(' ')[0] || '' }}",
+            "lastName": "={{ $json.name?.split(' ').slice(1).join(' ') || '' }}"
+          }
+        ]
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "dbd89a27-35bb-48d8-9ac5-2fa1d5d8ae05",
+      "name": "Fetch Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        280,
+        0
+      ],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "your-google-sheet-id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Leads"
+        },
+        "options": {
+          "returnFirstMatch": false
+        }
+      },
+      "typeVersion": 4.5
+    },
+    {
+      "id": "628aab46-b398-4b36-85d1-014d652afab1",
+      "name": "Update Lead Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        980,
+        0
+      ],
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "your-google-sheet-id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Leads"
+        },
+        "columnToMatchOn": "email",
+        "valueToMatchOn": "={{ $json.email }}",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "email_sent",
+            "last_contact_date": "={{ $now.toISO() }}",
+            "campaign_id": "={{ $json.campaignId || 'cold_outreach_' + $now.format('YYYY-MM-DD') }}"
+          }
+        }
+      },
+      "typeVersion": 4.5
+    },
+    {
+      "id": "lead-enrichment",
+      "name": "Enrich Lead Data",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        400,
+        0
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "list-id",
+              "name": "listId",
+              "type": "string",
+              "value": "your-bayengage-list-id"
+            },
+            {
+              "id": "sender-name",
+              "name": "sender_name",
+              "type": "string",
+              "value": "Your Name"
+            },
+            {
+              "id": "sender-title",
+              "name": "sender_title",
+              "type": "string",
+              "value": "Business Development Manager"
+            },
+            {
+              "id": "company-name",
+              "name": "company_name",
+              "type": "string",
+              "value": "Your Company"
+            },
+            {
+              "id": "cta-link",
+              "name": "cta_link",
+              "type": "string",
+              "value": "https://your-website.com/schedule-call"
+            },
+            {
+              "id": "cta-text",
+              "name": "cta_text",
+              "type": "string",
+              "value": "Schedule a Quick Call"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
+    },
+    {
+      "id": "email-templates",
+      "name": "Email Templates",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        600,
+        -300
+      ],
+      "parameters": {
+        "color": 5,
+        "width": 400,
+        "height": 200,
+        "content": "## Email Templates\n\nThis workflow uses professional HTML email templates with:\n- Responsive design\n- Branded styling\n- Clear call-to-action\n- Personalization\n- Unsubscribe option\n\nTemplates are optimized for BayEngage's email rendering engine."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "analytics-tracking",
+      "name": "Analytics & Tracking",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1000,
+        -300
+      ],
+      "parameters": {
+        "color": 4,
+        "width": 400,
+        "height": 200,
+        "content": "## Analytics & Tracking\n\nBayEngage provides:\n- Open rates\n- Click rates\n- Bounce rates\n- Unsubscribe rates\n- Engagement metrics\n\nAll data is automatically tracked and available in BayEngage dashboard."
+      },
+      "typeVersion": 1
+    }
+  ],
+  "active": false,
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d5e6cda8-c19f-4d84-b8a7-3caac878d7a0",
+  "connections": {
+    "Fetch Leads": {
+      "main": [
+        [
+          {
+            "node": "Enrich Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead Status": {
+      "main": [
+        [
+          {
+            "node": "Batch Processing of Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Personalized Email": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch Processing of Leads": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send Personalized Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Batch Processing of Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

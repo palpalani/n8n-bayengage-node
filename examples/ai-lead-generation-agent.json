@@ -1,0 +1,358 @@
+{
+  "meta": {
+    "instanceId": "5b9aff0ecdeb17791c04b93eac72e39e69151cfa63708980e5d936abe9308b8c",
+    "templateCredsSetupCompleted": true
+  },
+  "name": "AI Marketing Agent for Lead Generation with BayEngage",
+  "nodes": [
+    {
+      "id": "36cb5d98-8d20-426c-a965-bac91a63847e",
+      "name": "Workflow Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3200,
+        560
+      ],
+      "parameters": {
+        "content": "## AI Marketing Agent for Lead Generation\n\nThis workflow uses AI agents to:\n1. **Research Leads**: Find potential customers on Reddit\n2. **Analyze Competitors**: Research competitor strategies\n3. **Generate Content**: Create personalized outreach content\n4. **Send Emails**: Deliver via BayEngage for better deliverability\n5. **Track Results**: Monitor campaign performance\n\n### BayEngage Integration:\n- Professional email templates\n- Better deliverability\n- Advanced analytics\n- Lead management\n- Campaign tracking"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "59126319-3736-49f9-bb0e-8ec4ae083f89",
+      "name": "AI Agent Features",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -620,
+        560
+      ],
+      "parameters": {
+        "content": "## AI Agent Features\n\n- **Reddit Scraper**: Finds relevant discussions\n- **Competitor Analysis**: Researches market landscape\n- **Content Generation**: Creates personalized messages\n- **Lead Scoring**: Ranks prospects by potential\n- **Email Personalization**: Customizes outreach\n- **Follow-up Automation**: Manages lead nurturing"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "ee0879ad-783a-44ce-a78b-e9983eed0c55",
+      "name": "BayEngage Benefits",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2300,
+        560
+      ],
+      "parameters": {
+        "content": "## BayEngage Integration Benefits\n\n- **Professional Templates**: Beautiful HTML emails\n- **High Deliverability**: Better inbox placement\n- **Advanced Analytics**: Track opens, clicks, responses\n- **Lead Management**: Organize and segment prospects\n- **Compliance**: Built-in email compliance\n- **Automation**: Triggered follow-up sequences"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "f5d37f76-4b82-4578-b272-17a5e33b99df",
+      "name": "OpenRouter Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "position": [
+        -3160,
+        1060
+      ],
+      "parameters": {
+        "model": "anthropic/claude-3.5-sonnet",
+        "options": {}
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "3ad7fb9f-0cc9-4bd0-a137-021a334196dc",
+      "name": "HTTP Request Tool",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "position": [
+        -3020,
+        1060
+      ],
+      "parameters": {
+        "name": "reddit_scraper",
+        "description": "Scrape Reddit posts and comments for lead generation"
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "ab1a88b8-ce11-47f0-a457-2ac8d804c490",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        -2860,
+        1060
+      ],
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"leads\": [\n    {\n      \"username\": \"reddit_user\",\n      \"email\": \"user@example.com\",\n      \"company\": \"Company Name\",\n      \"pain_points\": [\"pain1\", \"pain2\"],\n      \"engagement_score\": 8.5,\n      \"source_post\": \"https://reddit.com/r/subreddit/post\",\n      \"personalization_notes\": \"Interested in automation tools\"\n    }\n  ],\n  \"total_leads\": 1,\n  \"search_terms\": [\"automation\", \"productivity\"],\n  \"subreddits\": [\"r/entrepreneur\", \"r/smallbusiness\"]\n}"
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "0e7c8c05-e5e0-4cdd-b2fb-4dc35b790403",
+      "name": "Competitor Analyst",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -1600,
+        960
+      ],
+      "parameters": {
+        "text": "=Analyze competitors in the {{ $json.industry }} industry and provide insights on:\n\n1. **Key Competitors**: List top 5 competitors\n2. **Pricing Strategies**: How they price their products/services\n3. **Marketing Channels**: Where they advertise and promote\n4. **Content Strategy**: What type of content they create\n5. **Target Audience**: Who they're targeting\n6. **Unique Value Props**: What makes them different\n7. **Weaknesses**: Areas where they might be vulnerable\n8. **Opportunities**: Gaps we can exploit\n\nFocus on companies that would be direct competitors to our {{ $json.product }} offering.",
+        "promptType": "define"
+      },
+      "typeVersion": 1.9
+    },
+    {
+      "id": "76012b18-8116-4e00-92b6-172d2aa91246",
+      "name": "Keyword Analyst",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -3100,
+        840
+      ],
+      "parameters": {
+        "text": "=Analyze keywords and search terms for the {{ $json.industry }} industry:\n\n1. **Primary Keywords**: Main terms people search for\n2. **Long-tail Keywords**: Specific, detailed search phrases\n3. **Reddit Keywords**: Terms used in relevant subreddits\n4. **Pain Point Keywords**: Problems people are discussing\n5. **Solution Keywords**: What they're looking for\n6. **Competitor Keywords**: Terms competitors are targeting\n7. **Trending Topics**: Current hot topics in the industry\n8. **Seasonal Keywords**: Time-sensitive terms\n\nProvide 20-30 keywords total, ranked by relevance and search volume potential.",
+        "promptType": "define"
+      },
+      "typeVersion": 1.9
+    },
+    {
+      "id": "reddit-scraper",
+      "name": "Reddit Lead Scraper",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -2700,
+        1060
+      ],
+      "parameters": {
+        "text": "=Search Reddit for potential leads in the {{ $json.industry }} industry:\n\n**Search Strategy:**\n1. Use these keywords: {{ $json.keywords.join(', ') }}\n2. Focus on these subreddits: {{ $json.subreddits.join(', ') }}\n3. Look for posts from the last 30 days\n4. Target posts with high engagement (comments, upvotes)\n\n**Lead Criteria:**\n- Users asking for help or recommendations\n- People discussing pain points we solve\n- Users looking for solutions we provide\n- Business owners or decision makers\n- Active community members\n\n**Extract Information:**\n- Username and profile info\n- Company/website if mentioned\n- Pain points they're experiencing\n- Budget indicators (if mentioned)\n- Timeline for solutions\n- Contact information (if available)\n\n**Output Format:**\nReturn structured data with lead information, engagement scores, and personalization notes.",
+        "promptType": "define"
+      },
+      "typeVersion": 1.9
+    },
+    {
+      "id": "content-generator",
+      "name": "Content Generator",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -1200,
+        960
+      ],
+      "parameters": {
+        "text": "=Generate personalized outreach content for each lead:\n\n**Lead Information:**\n- Name: {{ $json.username }}\n- Company: {{ $json.company }}\n- Pain Points: {{ $json.pain_points.join(', ') }}\n- Source: {{ $json.source_post }}\n- Personalization Notes: {{ $json.personalization_notes }}\n\n**Requirements:**\n1. **Subject Line**: Compelling, under 50 characters\n2. **Email Body**: 150-200 words, personalized\n3. **Value Proposition**: How we solve their specific pain points\n4. **Call to Action**: Clear next step\n5. **Tone**: Professional but friendly\n6. **Personalization**: Reference their specific situation\n\n**Content Guidelines:**\n- Don't be pushy or salesy\n- Focus on helping, not selling\n- Reference their Reddit post naturally\n- Offer something valuable (free resource, consultation)\n- Make it easy to respond\n\n**Output Format:**\n```json\n{\n  \"subject\": \"Subject line here\",\n  \"body\": \"Email body here\",\n  \"cta\": \"Call to action text\",\n  \"personalization_score\": 8.5\n}\n```",
+        "promptType": "define"
+      },
+      "typeVersion": 1.9
+    },
+    {
+      "id": "send-outreach-email",
+      "name": "Send Outreach Email via BayEngage",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "position": [
+        -400,
+        960
+      ],
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "name": "Lead Outreach - {{ $json.username }}",
+        "subject": "={{ $json.content.subject }}",
+        "htmlContent": "=<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>{{ $json.content.subject }}</title>\n</head>\n<body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n    <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;\">\n        <h1 style=\"margin: 0; font-size: 24px;\">Hi {{ $json.username }}!</h1>\n        <p style=\"margin: 10px 0 0 0; opacity: 0.9;\">I saw your post on Reddit and thought I could help</p>\n    </div>\n    \n    <div style=\"background: #f9f9f9; padding: 30px; border-radius: 8px; margin-bottom: 30px;\">\n        <div style=\"white-space: pre-line; line-height: 1.6; color: #333; margin-bottom: 20px;\">{{ $json.content.body }}</div>\n        \n        <div style=\"text-align: center; margin: 30px 0;\">\n            <a href=\"{{ $json.ctaLink || 'https://your-website.com/contact' }}\" style=\"background-color: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;\">\n                {{ $json.content.cta }}\n            </a>\n        </div>\n        \n        <div style=\"background: #e8f2ff; padding: 20px; border-radius: 8px; margin-top: 20px;\">\n            <p style=\"margin: 0; color: #666; font-size: 14px; text-align: center;\">\n                <strong>P.S.</strong> I noticed you mentioned {{ $json.pain_points[0] }} in your Reddit post. We've helped many businesses with similar challenges and would love to share some insights.\n            </p>\n        </div>\n    </div>\n    \n    <div style=\"background: #e8f2ff; padding: 20px; border-radius: 8px; text-align: center;\">\n        <p style=\"margin: 0; color: #666; font-size: 14px;\">\n            Best regards,<br>\n            <strong>{{ $json.senderName || 'Your Name' }}</strong><br>\n            {{ $json.senderTitle || 'Business Development' }}<br>\n            {{ $json.companyName || 'Your Company' }}\n        </p>\n    </div>\n    \n    <div style=\"margin-top: 30px; text-align: center; font-size: 12px; color: #999;\">\n        <p>If you're not interested, no worries! Just reply with \"unsubscribe\" and I'll remove you from future emails.</p>\n    </div>\n</body>\n</html>",
+        "listId": "={{ $json.listId }}",
+        "recipients": [
+          {
+            "email": "={{ $json.email }}",
+            "firstName": "={{ $json.username }}",
+            "lastName": ""
+          }
+        ]
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "lead-scoring",
+      "name": "Lead Scoring Engine",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -800,
+        960
+      ],
+      "parameters": {
+        "jsCode": "// Lead scoring algorithm\nconst lead = $input.first().json;\n\n// Scoring factors\nlet score = 0;\nlet reasons = [];\n\n// Engagement score (0-10)\nif (lead.engagement_score) {\n  score += lead.engagement_score * 0.3;\n  reasons.push(`High engagement: ${lead.engagement_score}/10`);\n}\n\n// Pain points match (0-10)\nconst painPointScore = Math.min(lead.pain_points?.length || 0, 5) * 2;\nscore += painPointScore;\nif (painPointScore > 0) {\n  reasons.push(`Pain points identified: ${lead.pain_points.length}`);\n}\n\n// Company information available (0-5)\nif (lead.company) {\n  score += 5;\n  reasons.push('Company information available');\n}\n\n// Contact information (0-5)\nif (lead.email) {\n  score += 5;\n  reasons.push('Contact information available');\n}\n\n// Source quality (0-5)\nif (lead.source_post?.includes('reddit.com')) {\n  score += 3;\n  reasons.push('Active Reddit user');\n}\n\n// Personalization potential (0-5)\nif (lead.personalization_notes) {\n  score += 5;\n  reasons.push('Rich personalization data');\n}\n\n// Normalize to 0-100\nconst normalizedScore = Math.min(Math.round(score * 10), 100);\n\n// Determine priority level\nlet priority = 'Low';\nif (normalizedScore >= 80) priority = 'High';\nelse if (normalizedScore >= 60) priority = 'Medium';\n\nreturn [\n  {\n    json: {\n      ...lead,\n      lead_score: normalizedScore,\n      priority: priority,\n      score_reasons: reasons,\n      qualified: normalizedScore >= 60\n    }\n  }\n];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "configuration",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -3400,
+        840
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "industry",
+              "name": "industry",
+              "type": "string",
+              "value": "SaaS"
+            },
+            {
+              "id": "product",
+              "name": "product",
+              "type": "string",
+              "value": "Marketing Automation Platform"
+            },
+            {
+              "id": "subreddits",
+              "name": "subreddits",
+              "type": "array",
+              "value": "=[\"r/entrepreneur\", \"r/smallbusiness\", \"r/marketing\", \"r/saas\"]"
+            },
+            {
+              "id": "keywords",
+              "name": "keywords",
+              "type": "array",
+              "value": "=[\"marketing automation\", \"lead generation\", \"email marketing\", \"CRM\", \"sales funnel\"]"
+            },
+            {
+              "id": "list-id",
+              "name": "listId",
+              "type": "string",
+              "value": "your-bayengage-list-id"
+            },
+            {
+              "id": "sender-name",
+              "name": "senderName",
+              "type": "string",
+              "value": "Your Name"
+            },
+            {
+              "id": "sender-title",
+              "name": "senderTitle",
+              "type": "string",
+              "value": "Business Development Manager"
+            },
+            {
+              "id": "company-name",
+              "name": "companyName",
+              "type": "string",
+              "value": "Your Company"
+            },
+            {
+              "id": "cta-link",
+              "name": "ctaLink",
+              "type": "string",
+              "value": "https://your-website.com/contact"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Reddit Lead Scraper",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Competitor Analyst",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Keyword Analyst",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Content Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Reddit Lead Scraper",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Reddit Lead Scraper",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit Lead Scraper": {
+      "main": [
+        [
+          {
+            "node": "Lead Scoring Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Scoring Engine": {
+      "main": [
+        [
+          {
+            "node": "Content Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Generator": {
+      "main": [
+        [
+          {
+            "node": "Send Outreach Email via BayEngage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Reddit Lead Scraper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Competitor Analyst",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Keyword Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

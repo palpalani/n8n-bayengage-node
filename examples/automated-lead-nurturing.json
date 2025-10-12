@@ -1,0 +1,411 @@
+{
+  "id": "j5mmnDs4wqwOaP64",
+  "meta": {
+    "instanceId": "0c91cd2a3133931f13781d4dcd6db321515413596b36e6bddb494176726841a7",
+    "templateCredsSetupCompleted": true
+  },
+  "name": "Automated Lead Nurturing with BayEngage",
+  "tags": [
+    {
+      "id": "a6b41kNUtX65uzIo",
+      "name": "bayengage-automation",
+      "createdAt": "2025-05-14T18:52:56.055Z",
+      "updatedAt": "2025-05-14T18:52:56.055Z"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "78c7185b-d0c7-49f1-85b2-58ec8cff335a",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -1180,
+        340
+      ],
+      "webhookId": "REDACTED",
+      "parameters": {},
+      "typeVersion": 2
+    },
+    {
+      "id": "9781c940-ab96-4768-8ccf-50c501f7dba7",
+      "name": "Extract Lead Info",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -960,
+        340
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "lead-email",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "id": "lead-name",
+              "name": "name",
+              "type": "string",
+              "value": "={{ $json.name }}"
+            },
+            {
+              "id": "lead-phone",
+              "name": "phone",
+              "type": "string",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "id": "lead-company",
+              "name": "company",
+              "type": "string",
+              "value": "={{ $json.company }}"
+            },
+            {
+              "id": "lead-source",
+              "name": "source",
+              "type": "string",
+              "value": "={{ $json.source || 'webhook' }}"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
+    },
+    {
+      "id": "3795818d-35f6-489c-802d-18b14b3af745",
+      "name": "Add Contact to BayEngage",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "position": [
+        -740,
+        140
+      ],
+      "parameters": {
+        "resource": "contact",
+        "operation": "upsert",
+        "email": "={{ $json.email }}",
+        "firstName": "={{ $json.name.split(' ')[0] }}",
+        "lastName": "={{ $json.name.split(' ').slice(1).join(' ') }}",
+        "phone": "={{ $json.phone }}",
+        "company": "={{ $json.company }}",
+        "customFields": {
+          "source": "={{ $json.source }}"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "b5150aa7-12a2-4b54-a03e-17d4d9309369",
+      "name": "Twilio",
+      "type": "n8n-nodes-base.twilio",
+      "position": [
+        -740,
+        540
+      ],
+      "parameters": {},
+      "typeVersion": 1
+    },
+    {
+      "id": "d713eeb9-0516-498f-bbb3-3469172454c8",
+      "name": "Wait 24h",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        -740,
+        340
+      ],
+      "webhookId": "b3330ddb-b297-481a-a9cb-1f7ab4c9c399",
+      "parameters": {},
+      "typeVersion": 1.1
+    },
+    {
+      "id": "4746b234-6004-43f3-8e6b-59b0b5eddfb9",
+      "name": "Day 1 Follow-up Email",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "position": [
+        -520,
+        240
+      ],
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "name": "Day 1 Follow-up - {{ $json.email }}",
+        "subject": "Thanks for your interest! Here's what's next...",
+        "htmlContent": "=Hi {{ $json.name }},\n\nThank you for your interest in our services! We're excited to work with you.\n\nHere's what you can expect next:\n- We'll review your requirements\n- Schedule a discovery call\n- Provide a customized proposal\n\nBest regards,\nThe Team",
+        "listId": "={{ $json.listId }}",
+        "recipients": [
+          {
+            "email": "={{ $json.email }}"
+          }
+        ]
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "8dbffbe1-f8af-47d3-b40d-1c90a66b9964",
+      "name": "Day 1 - Check Your Inbox",
+      "type": "n8n-nodes-base.twilio",
+      "position": [
+        -520,
+        440
+      ],
+      "parameters": {},
+      "typeVersion": 1
+    },
+    {
+      "id": "0d2e803f-e621-4fbb-924b-105427c9e541",
+      "name": "Wait 48h",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        -300,
+        340
+      ],
+      "webhookId": "59ef7bc9-ed0c-4308-9e8c-ffd20bd2f6a5",
+      "parameters": {},
+      "typeVersion": 1.1
+    },
+    {
+      "id": "b3363238-4426-49fe-b886-080212a49bd4",
+      "name": "Track Email Click",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -80,
+        340
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "email-clicked",
+              "leftValue": "={{ $json.clicked }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "typeVersion": 2.2
+    },
+    {
+      "id": "de4ea804-8e23-46a5-946a-03492017a762",
+      "name": "Mark as Interested",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        140,
+        240
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "type": "string",
+              "value": "interested"
+            },
+            {
+              "id": "notes",
+              "name": "notes",
+              "type": "string",
+              "value": "Clicked on Day 1 email - high interest"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
+    },
+    {
+      "id": "b8448199-83f0-4df6-a672-0b8881e75fdf",
+      "name": "Wait Before Re-Engagement",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        140,
+        440
+      ],
+      "webhookId": "b9b11626-f749-4498-bb8a-f48247bd9dd6",
+      "parameters": {},
+      "typeVersion": 1.1
+    },
+    {
+      "id": "4195f6b4-59d0-42e5-a677-28b91adf8b64",
+      "name": "Follow-up Email",
+      "type": "n8n-nodes-bayengage.bayEngage",
+      "position": [
+        360,
+        440
+      ],
+      "parameters": {
+        "resource": "campaign",
+        "operation": "create",
+        "name": "Re-engagement Follow-up - {{ $json.email }}",
+        "subject": "Still interested? Let's connect!",
+        "htmlContent": "=Hi {{ $json.name }},\n\nWe noticed you haven't responded to our previous messages. We understand you might be busy, but we'd love to help you with your project.\n\nWould you like to:\n- Schedule a quick 15-minute call?\n- Receive more information about our services?\n- Get a free consultation?\n\nJust reply to this email and we'll get back to you within 24 hours.\n\nBest regards,\nThe Team",
+        "listId": "={{ $json.listId }}",
+        "recipients": [
+          {
+            "email": "={{ $json.email }}"
+          }
+        ]
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "workflow-docs",
+      "name": "Workflow Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1200,
+        100
+      ],
+      "parameters": {
+        "color": 4,
+        "width": 400,
+        "height": 200,
+        "content": "## BayEngage Lead Nurturing\n\nThis workflow automates lead nurturing using BayEngage for email marketing:\n\n1. **Lead Capture**: Webhook receives new leads\n2. **Contact Management**: Adds/updates contacts in BayEngage\n3. **Email Sequences**: Automated follow-up campaigns\n4. **Engagement Tracking**: Monitors email interactions\n5. **Re-engagement**: Targeted follow-up for non-responders"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "bayengage-benefits",
+      "name": "BayEngage Benefits",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1200,
+        320
+      ],
+      "parameters": {
+        "color": 5,
+        "width": 400,
+        "height": 200,
+        "content": "## BayEngage Integration Benefits\n\n- **Professional Templates**: Better email design\n- **Deliverability**: Higher inbox placement\n- **Analytics**: Track opens, clicks, engagement\n- **Segmentation**: Target specific lead groups\n- **Compliance**: Built-in email compliance\n- **Automation**: Advanced drip campaigns"
+      },
+      "typeVersion": 1
+    }
+  ],
+  "active": false,
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "35e64c0e-5d1c-42fb-80fd-5497cf7487b1",
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Lead Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 24h": {
+      "main": [
+        [
+          {
+            "node": "Day 1 Follow-up Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Day 1 - Check Your Inbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 48h": {
+      "main": [
+        [
+          {
+            "node": "Track Email Click",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Day 1 Follow-up Email": {
+      "main": [
+        [
+          {
+            "node": "Wait 48h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Lead Info": {
+      "main": [
+        [
+          {
+            "node": "Add Contact to BayEngage",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait 24h",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Twilio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Track Email Click": {
+      "main": [
+        [
+          {
+            "node": "Mark as Interested",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait Before Re-Engagement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Day 1 - Check Your Inbox": {
+      "main": [
+        [
+          {
+            "node": "Wait 48h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Before Re-Engagement": {
+      "main": [
+        [
+          {
+            "node": "Follow-up Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
