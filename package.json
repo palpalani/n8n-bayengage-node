@@ -59,7 +59,7 @@
     "@types/node": "^25.2.0",
     "@typescript-eslint/parser": "~8.53.0",
     "@vitest/ui": "^4.0.18",
-    "eslint": "^9.39.2",
+    "eslint": "^10.0.0",
     "eslint-plugin-json": "^4.0.1",
     "eslint-plugin-n8n-nodes-base": "^1.16.6",
     "globals": "^17.3.0",
