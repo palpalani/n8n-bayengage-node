@@ -57,7 +57,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.0",
-    "@typescript-eslint/parser": "~8.62.0",
+    "@typescript-eslint/parser": "~8.62.1",
     "@vitest/ui": "^4.1.9",
     "eslint": "^10.6.0",
     "eslint-plugin-json": "^4.0.1",
