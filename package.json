@@ -62,7 +62,7 @@
     "eslint": "^10.8.1",
     "eslint-plugin-json": "^5.0.0",
     "eslint-plugin-n8n-nodes-base": "^2.0.0",
-    "globals": "^17.9.0",
+    "globals": "^17.11.0",
     "gulp": "^5.0.1",
     "prettier": "^3.9.6",
     "typescript": "^7.0.2",
