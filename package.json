@@ -56,7 +56,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.1",
     "@typescript-eslint/parser": "~8.69.0",
     "@vitest/ui": "^4.1.10",
     "eslint": "^10.10.0",
@@ -64,10 +64,10 @@
     "eslint-plugin-n8n-nodes-base": "^2.0.0",
     "globals": "^17.12.0",
     "gulp": "^5.0.1",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.7",
     "typescript": "^7.0.2",
     "typescript-eslint": "^8.70.0",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   },
   "peerDependencies": {
     "n8n-workflow": "*"
