@@ -1,4 +1,3 @@
-const js = require('@eslint/js');
 const tseslint = require('typescript-eslint');
 const n8nNodesBase = require('eslint-plugin-n8n-nodes-base');
 const json = require('eslint-plugin-json');
